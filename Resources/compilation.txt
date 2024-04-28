@@ -1,0 +1,3 @@
+So I think I've kinda figured it out, it'll be pretty much a stack machine with 
+pre-allocated function arguments. I'm not compleeeeetely sure how it will work
+out, but it'll be okay (I'll plan here in the future)

@@ -1,0 +1,21 @@
+fn penis(int aboba, int aboba2) {
+    let int a = 0
+    mut a = 3
+
+    if 5 {
+        let int b = 3 / a
+
+        if 3 {
+            let int c = 2
+            let int d = 2
+        }
+
+        if 5 {
+            let int b = 3
+        }
+
+        let int test = 3
+    }
+
+    let int e = 13
+}

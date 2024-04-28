@@ -1,0 +1,36 @@
+((3 + (1 - 2)) + 2)
+
+l1 = (3 + (1 - 2)))
+r1 = (2)
+
+l2 = (3)
+r2 = (1 - 2)
+
+l3 = (1)
+r3 = (2)
+
+
+mov eax, 3
+push eax            ; 3
+
+mov eax, 1
+push eax            ; 3 | 1
+mov eax, 2
+push eax            ; 3 | 1 | 2
+pop ebx             ; 3 | 1
+pop eax             ; 3
+sub eax, ebx
+push eax            ; 3 | -1
+
+pop ebx             ; 3
+pop eax             ;
+add eax, ebx
+push eax            ; 2
+
+mov eax, 2
+push eax            ; 2 | 2
+pop ebx
+pop eax
+add eax, ebx        ;
+
+; Obviously this is overly verbose, but that's because it will be generated lulz

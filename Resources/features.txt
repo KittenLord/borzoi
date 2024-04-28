@@ -1,0 +1,19 @@
+Previous' syntax was smth like Rust
+
+    fn name(type arg, type arg) -> ret {}
+    let type name = 5;
+
+Not sure if I wanna repeat it here
+
+After thinking, probably I'll keep +- the same syntax, it's relatively
+easy to parse, so why not (though -> for function definition might be
+excessive)
+
+
+
+
+One thing I'm sure of though, is that this one will be way simpler - 
+I really overscope the previous one, block evaluation is fun of course,
+but it's stupid to try to implement it on the first try lol
+
+This one probably won't even have structs, just int/bool/float/string

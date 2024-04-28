@@ -1,0 +1,21 @@
+So, I think I've gotten some understanding on how parsing works in practice, but I'm
+still kinda confused on the approach to report errors... The main concern is that it
+"overpops" the token queue so much, that it can't continue parsing adequately and
+pretty much dies (5 billion unrelated errors). Also I can't really goto out of the
+function scope, so I can't control how much we unnest the parser - maybe use Result<T>,
+which some functions propagate, and others handle? Really not sure
+
+In a more serious project I think a good approach will be to first parse out the matching
+delimiters, i.e. {} [] () "", you know, and if they aren't closed somewhere, you can go
+off from there (though I'm not sure where lol)
+
+
+Also a concern that I should have is to make the parsetree actually traversible, so that
+it's manageable (I definitely should try to write a parser in language with sum types)
+The thing is, because C# doesn't support sum types, you are pretty much forced to use
+interfaces/ad-hoc pattern matching, which is both clunky and incredibly unreliable, as
+you can't even prove that your pattern matching is exhaustive (even visually it is hard,
+since your classes that implement an interface can be scattered across the codebase)
+
+And tbh I don't really know how to make it more elegant either way - it'll still be a
+recursive rescent, just not in the grammar contructions, but in the parsetree
