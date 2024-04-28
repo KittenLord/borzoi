@@ -130,6 +130,12 @@ public class Parser
                 if(@if is null) { return null; }
                 statements.Add(@if);
             }
+            else if(Peek().Is(TokenType.Ret))
+            {
+                var @return = ParseReturn();
+                if(@return is null) { return null; }
+                statements.Add(@return);
+            }
         }
 
         _ = Pop();
@@ -182,6 +188,16 @@ public class Parser
         return new MutNode(origin, name, expr);
     }
 
+    private ReturnNode? ParseReturn()
+    {
+        var origin = Pop();
+
+        var expr = ParseExpr();
+        if(expr is null) { return null; }
+
+        return new ReturnNode(expr);
+    }
+
     private IfNode? ParseIf()
     {
         var origin = Pop();
@@ -214,6 +230,20 @@ public class Parser
     {
         if(Peek().Is(TokenType.IntLit)) return new IntLit(Pop().IntValue);
         if(Peek().Is(TokenType.Id)) return new Var(Peek(), Pop().Value);
+        if(Peek().Is(TokenType.LParen))
+        {
+            _ = Pop();
+            var expr = ParseExpr();
+            if(expr is null) return null;
+            if(Peek().Is(TokenType.RParen)) 
+            {
+                Pop();
+                return expr;
+            }
+
+            Report(Error.Expected([TokenType.RParen], Peek()));
+            return null;
+        }
         Report("fuck", Peek());
         return null;
     }
@@ -237,7 +267,7 @@ public class Parser
     {
         var binop = Peek();
         if(!IsBinop(binop)) return expr;
-        if(GetBinopPriority(binop) < precedence) return expr;
+        if(GetBinopPriority(binop) <= precedence) return expr;
 
         Pop();
         var right = ParseExpr(GetBinopPriority(binop));

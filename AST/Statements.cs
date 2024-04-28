@@ -49,6 +49,7 @@ public class LetNode : IStatement
 {
     public VType Type;
     public string Name => NameT.Value;
+    public Var Var;
 
     public Token Origin;
     public Token NameT;
@@ -63,4 +64,13 @@ public class LetNode : IStatement
     }
 
     public override string ToString() { return $"LET {Name} :: {Type}\n{Expr.ToString()?.Indent()}"; }
+}
+
+public class ReturnNode : IStatement
+{
+    public IExpr Expr;
+    public ReturnNode(IExpr expr)
+    {
+        Expr = expr;
+    }
 }

@@ -2,11 +2,13 @@
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 
 using EdComp.Lexing;
 using EdComp.Parsing;
 using EdComp.Analysis;
 using EdComp.ASTn;
+using EdComp.Generation;
 
 namespace EdComp;
 
@@ -14,8 +16,9 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        var filePath = "Resources/test.txt";
-        var text = File.ReadAllText(filePath);
+        var inputFilePath = "Resources/test.txt";
+        var outputFilePath = "Resources/test.S";
+        var text = File.ReadAllText(inputFilePath);
         TestLexer(text);
         System.Console.WriteLine($"\n\n\n");
 
@@ -37,6 +40,9 @@ public class Program
         System.Console.WriteLine($"--------------------");
         System.Console.WriteLine($"{string.Join("\n", fn.VarsInternal)}");
 
+        var generator = new Generator(analyzer.AST);
+        var nasmCode = generator.Generate(RuntimeInformation.IsOSPlatform(OSPlatform.Windows));
+        File.WriteAllText(outputFilePath, nasmCode);
     }
 
     private static void TestLexer(string text)

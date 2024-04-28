@@ -80,6 +80,13 @@ public class Analyzer
             }
 
             var type = fn.RetType is null ? new VType() : new VType(fn.RetType, VTypeMod.Fn);
+
+            if(fn.RetType is not null && !TypeExists(type.Name, out _))
+            {
+                Report(Error.UnknownType(type.Name, def));
+                return false;
+            }
+
             Identifiers.Add(new Identifier(fn.Name, fn.Name, type, fn.Origin));
         }
 
@@ -189,6 +196,7 @@ public class Analyzer
                         return false;
                     }
 
+                    let.Var = new Var(let.Origin, let.Name, wname, let.Type);
                     var id = new Identifier(let.Name, wname, let.Type, let.Origin);
                     fn.VarsInternal.Add(wname);
                     Identifiers.Add(id);

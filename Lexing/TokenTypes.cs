@@ -10,7 +10,6 @@ public enum TokenType
 
 
     Fn,
-    Return,
     Let,
     Mut,
     Ret,
