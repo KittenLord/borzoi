@@ -15,6 +15,8 @@ public enum TokenType
     Ret,
     If,
     Else,
+    While,
+    Do,
 
 
     Plus, Minus, Mul, Div, Mod,

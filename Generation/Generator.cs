@@ -64,6 +64,16 @@ ret
                 fnCode += expr;
                 fnCode += $"pop rax\nmov [rbp-{varIndex}], rax\n";
             }
+            else if(line is MutNode mut)
+            {
+                // TODO: Allow to change arguments aswell
+                var varIndex = fn.VarsInternal.IndexOf(mut.Var.WorkingName);
+                varIndex = (varIndex + 1) * Settings.Bytes;
+
+                var expr = GenerateExpr(fn, mut.Expr);
+                fnCode += expr;
+                fnCode += $"pop rax\nmov [rbp-{varIndex}], rax\n";
+            }
             else if(line is ReturnNode ret)
             {
                 if(ret.Nothing) fnCode += "mov rax, 0\n";
@@ -95,6 +105,29 @@ ret
 
                 fnCode += $"{endifLabel}:\n";
             }
+            else if(line is WhileNode wh)
+            {
+                var endLabel = GetLabel("endwhile");
+                var doLabel = GetLabel("do");
+
+                var condition = GenerateExpr(fn, wh.Condition);
+
+                fnCode += $"{doLabel}:\n";
+                if(!wh.Do)
+                {
+                    fnCode += condition;
+                    fnCode += $"pop rax\ncmp rax, 1\njne {endLabel}\n";
+                }
+                fnCode += GenerateBlock(fn, wh.Block);
+                if(wh.Do)
+                {
+                    fnCode += condition;
+                    fnCode += $"pop rax\ncmp rax, 1\njne {endLabel}\n";
+                }
+                fnCode += $"jmp {doLabel}\n";
+                fnCode += $"{endLabel}:\n";
+            }
+            else throw new System.Exception();
         }
         return fnCode;
     }

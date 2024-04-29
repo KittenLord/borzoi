@@ -151,6 +151,8 @@ public class Lexer
         if(id == "ret") return Put(TokenType.Ret, id);
         if(id == "if") return Put(TokenType.If, id);
         if(id == "else") return Put(TokenType.Else, id);
+        if(id == "while") return Put(TokenType.While, id);
+        if(id == "do") return Put(TokenType.Do, id);
         if(id == "true" || id == "false") 
         {
             var boolean = Put(TokenType.BoolLit, id);

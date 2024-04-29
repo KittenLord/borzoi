@@ -78,5 +78,10 @@ namespace EdComp.Analysis.Msg
         new Message(
             $"Operator {op.Value} for types {left} and {right} is not defined!",
             position);
+
+        public static Message NoEntryPoint() =>
+        new Message(
+            $"The program does not contain a \"main\" function",
+            new Token(TokenType.Illegal, "", 0, 0, 0));
     }
 }

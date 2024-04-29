@@ -132,25 +132,32 @@ public class Analyzer
 
         return true;
     }
+    
+    private Identifier? GetRelevantId(Var varn, string prefix)
+    {
+        var stack = new Stack<string>(prefix.Split("$").Where(p => p != ""));
+        while(stack.Count > 0) // > 0 <=> prefix == "funcName$"
+        {
+            stack.Push(varn.Name);
+            var wname = string.Join("$", stack.Reverse());
+            var id = Identifiers.Find(i => i.WorkingName == wname);
+            if(id is not null) { varn.Type = id.Type; varn.WorkingName = wname; return id; }
+            stack.Pop();
+            stack.Pop();
+        }
+        return null;
+    }
 
     private VType FigureOutTheTypeOfAExpr(string prefix, IExpr expr)
     {
         if(expr is Var varn)
         {
             if(varn.Type is not null) return varn.Type;
-            var stack = new Stack<string>(prefix.Split("$").Where(p => p != ""));
-            while(stack.Count > 0) // > 0 <=> prefix == "funcName$"
-            {
-                stack.Push(varn.Name);
-                var wname = string.Join("$", stack.Reverse());
-                var id = Identifiers.Find(i => i.WorkingName == wname);
-                if(id is not null) { varn.Type = id.Type; varn.WorkingName = wname; return id.Type; }
-                stack.Pop();
-                stack.Pop();
-            }
+
+            var id = GetRelevantId(varn, prefix);
+            if(id is not null) return id.Type;
 
             Report(Error.VariableDoesntExist(varn.Name, varn.Origin));
-
             return VType.Invalid;
         }
         if(expr is IntLit) return VType.Int;
@@ -182,73 +189,101 @@ public class Analyzer
 
         foreach(var line in block.Statements)
         {
-                if(line is LetNode let)
+            if(line is LetNode let)
+            {
+                var wname = prefix + let.Name;
+                if(WIdExists(wname, out var def)) 
                 {
-                    var wname = prefix + let.Name;
-                    if(WIdExists(wname, out var def)) 
-                    {
-                        Report(Error.AlreadyExists(let.Name, def, let.Origin));
-                        return false;
-                    }
-
-                    if(!TypeExists(let.Type.Name, out _))
-                    {
-                        Report(Error.UnknownType(let.Type.Name, let.Origin));
-                        return false;
-                    }
-
-                    var exprType = FigureOutTheTypeOfAExpr(prefix, let.Expr);
-                    // FIXME: If exprType == VType.Invalid, report that the operator for those types isn't defined
-                    if(exprType != let.Type)
-                    {
-                        Report(Error.LetTypeMismatch(let.Name, let.Type.ToString(), exprType.ToString(), let.Origin));
-                        return false;
-                    }
-
-                    let.Var = new Var(let.Origin, let.Name, wname, let.Type);
-                    var id = new Identifier(let.Name, wname, let.Type, let.Origin);
-                    fn.VarsInternal.Add(wname);
-                    Identifiers.Add(id);
+                    Report(Error.AlreadyExists(let.Name, def, let.Origin));
+                    return false;
                 }
-                else if(line is IfNode ifn)
+
+                if(!TypeExists(let.Type.Name, out _))
                 {
-                    var iprefix = GetPrefix("if");
-
-                    var exprType = FigureOutTheTypeOfAExpr(prefix, ifn.Condition);
-                    if(exprType != VType.Bool)
-                    {
-                        Report(Error.TypeMismatch(VType.Bool, exprType, ifn.Origin));
-                        return false;
-                    }
-
-                    var result = FigureOutTypesAndStuffForABlock(ifn.Block, fn, prefix + iprefix + "$");
-                    if(!result) return false;
-                    if(ifn.Else is not null)
-                        result = FigureOutTypesAndStuffForABlock(ifn.Else, fn, prefix + iprefix + "$");
-                    if(!result) return false;
+                    Report(Error.UnknownType(let.Type.Name, let.Origin));
+                    return false;
                 }
-                else if(line is ReturnNode ret)
+
+                var exprType = FigureOutTheTypeOfAExpr(prefix, let.Expr);
+                // FIXME: If exprType == VType.Invalid, report that the operator for those types isn't defined
+                if(exprType != let.Type)
                 {
-                    if(ret.Nothing != fn.RetType is null) 
+                    Report(Error.LetTypeMismatch(let.Name, let.Type.ToString(), exprType.ToString(), let.Origin));
+                    return false;
+                }
+
+                let.Var = new Var(let.Origin, let.Name, wname, let.Type);
+                var id = new Identifier(let.Name, wname, let.Type, let.Origin);
+                fn.VarsInternal.Add(wname);
+                Identifiers.Add(id);
+            }
+            else if(line is MutNode mut)
+            {
+                mut.Var = new(mut.NameT, mut.Name);
+
+                var id = GetRelevantId(mut.Var, prefix);
+                if(id is null) return false;
+
+                var type = FigureOutTheTypeOfAExpr(prefix, mut.Expr);
+                if(id.Type != type) 
+                {
+                    Report(Error.TypeMismatch(id.Type, type, mut.Origin));
+                    return false;
+                }
+            }
+            else if(line is IfNode ifn)
+            {
+                var iprefix = GetPrefix("if");
+
+                var exprType = FigureOutTheTypeOfAExpr(prefix, ifn.Condition);
+                if(exprType != VType.Bool)
+                {
+                    Report(Error.TypeMismatch(VType.Bool, exprType, ifn.Origin));
+                    return false;
+                }
+
+                var result = FigureOutTypesAndStuffForABlock(ifn.Block, fn, prefix + iprefix + "$");
+                if(!result) return false;
+                if(ifn.Else is not null)
+                    result = FigureOutTypesAndStuffForABlock(ifn.Else, fn, prefix + iprefix + "$");
+                if(!result) return false;
+            }
+            else if(line is WhileNode wh)
+            {
+                var iprefix = GetPrefix("while");
+
+                var exprType = FigureOutTheTypeOfAExpr(prefix, wh.Condition);
+                if(exprType != VType.Bool)
+                {
+                    Report(Error.TypeMismatch(VType.Bool, exprType, wh.Origin));
+                    return false;
+                }
+
+                var result = FigureOutTypesAndStuffForABlock(wh.Block, fn, prefix + iprefix + "$");
+                if(!result) return false;
+            }
+            else if(line is ReturnNode ret)
+            {
+                if(ret.Nothing != fn.RetType is null) 
+                {
+                    if(ret.Nothing) Report(Error.ReturnEmpty(true, ret.Origin));
+                    else Report(Error.ReturnEmpty(false, ret.Origin));
+                    return false;
+                }
+
+                if(!ret.Nothing)
+                {
+                    var exprType = FigureOutTheTypeOfAExpr(prefix, ret.Expr);
+                    if(!exprType.Valid) throw new System.Exception("gg");
+                    // FIXME: Implement actual types in fn.RetType
+                    if(exprType.Name != fn.RetType)
                     {
-                        if(ret.Nothing) Report(Error.ReturnEmpty(true, ret.Origin));
-                        else Report(Error.ReturnEmpty(false, ret.Origin));
+                        System.Console.WriteLine($"MISMATCH");
+                        Report(Error.RetTypeMismatch(fn.Name, new VType(fn.RetType), exprType, ret.Origin));
                         return false;
                     }
-
-                    if(!ret.Nothing)
-                    {
-                        var exprType = FigureOutTheTypeOfAExpr(prefix, ret.Expr);
-                        if(!exprType.Valid) throw new System.Exception("gg");
-                        // FIXME: Implement actual types in fn.RetType
-                        if(exprType.Name != fn.RetType)
-                        {
-                            System.Console.WriteLine($"MISMATCH");
-                            Report(Error.RetTypeMismatch(fn.Name, new VType(fn.RetType), exprType, ret.Origin));
-                            return false;
-                        }
-                    }
                 }
+            }
         }
 
         return true;
@@ -258,6 +293,11 @@ public class Analyzer
     {
         Types.Add(VType.Int);
         Types.Add(VType.Bool);
+        if(!AST.Fndefs.Any(fn => fn.Name == "main"))
+        {
+            Report(Error.NoEntryPoint());
+            return;
+        }
         var result = FigureOutTypesAndStuff();
     }
 }

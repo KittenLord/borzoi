@@ -12,6 +12,7 @@ public class MutNode : IStatement
 {
     public string Name => NameT.Value;
 
+    public Var Var;
     public Token Origin;
     public Token NameT;
     public IExpr Expr;
@@ -45,6 +46,27 @@ public class IfNode : IStatement, IContainer
     public BlockNode GetBlock() => Block;
 
     public override string ToString() { return $"IF\n{Condition.ToString()!.Indent()}\n{Block.ToString().Indent()}{(Else is not null ? $"\nELSE\n{Else.ToString().Indent()}" : "")}";}
+}
+
+public class WhileNode : IStatement, IContainer
+{
+    public IExpr Condition;
+    public bool Do;
+    public BlockNode Block;
+    public Token Origin;
+
+    public WhileNode(Token origin, IExpr condition, bool doo, BlockNode block)
+    {
+        Origin = origin;
+        Condition = condition;
+        Do = doo;
+        Block = block;
+    }
+
+    public List<LetNode> GetVariables() => Block.GetVariables();
+    public BlockNode GetBlock() => Block;
+
+    public override string ToString() { return $"WHILE\n{Condition.ToString()!.Indent()}\n{Block.ToString().Indent()}"; }
 }
 
 public class LetNode : IStatement

@@ -136,6 +136,12 @@ public class Parser
                 if(@return is null) { return null; }
                 statements.Add(@return);
             }
+            else if(Peek().Is(TokenType.Do, TokenType.While))
+            {
+                var @while = ParseWhile();
+                if(@while is null) { return null; }
+                statements.Add(@while);
+            }
         }
 
         _ = Pop();
@@ -199,6 +205,30 @@ public class Parser
         if(expr is null) { return null; }
 
         return new ReturnNode(origin, expr);
+    }
+
+    private WhileNode? ParseWhile()
+    {
+        var origin = Pop();
+        bool doo = origin.Is(TokenType.Do);
+
+        if(doo && !Peek().Is(TokenType.While))
+        {
+            Report(Error.Expected([TokenType.While], Peek()));
+            return null;
+        }
+        else if(doo)
+        {
+            _ = Pop();
+        }
+
+        var expr = ParseExpr();
+        if(expr is null) return null;
+
+        var block = ParseBlock();
+        if(block is null) return null;
+
+        return new WhileNode(origin, expr, doo, block);
     }
 
     private IfNode? ParseIf()
