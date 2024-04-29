@@ -1,4 +1,13 @@
-fn main() bool {
-    let int a = 12 / 3
-    ret a + 1 == 6 - 2
+fn main() int {
+    let int a = 0
+    if a > 5 {
+        ret 1
+    }
+    else if a < 5 {
+        ret 2
+    }
+    else {
+        ret 3
+    }
+    ret 0
 }

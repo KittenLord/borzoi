@@ -83,7 +83,7 @@ public class Lexer
         if(PeekPred(Eq('['))) return Put(TokenType.LBrack, Popc());
         if(PeekPred(Eq(']'))) return Put(TokenType.RBrack, Popc());
 
-        if(PeekPred(Eq('='))) return ReadOperator();
+        if(PeekPred(Eq('=', '<', '>', '!'))) return ReadOperator();
 
         Popc();
         return Put(TokenType.Illegal);
@@ -150,6 +150,7 @@ public class Lexer
         if(id == "mut") return Put(TokenType.Mut, id);
         if(id == "ret") return Put(TokenType.Ret, id);
         if(id == "if") return Put(TokenType.If, id);
+        if(id == "else") return Put(TokenType.Else, id);
         if(id == "true" || id == "false") 
         {
             var boolean = Put(TokenType.BoolLit, id);

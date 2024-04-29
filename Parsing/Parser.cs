@@ -213,8 +213,27 @@ public class Parser
 
         var block = ParseBlock();
         if(block is null) { return null; }
-        
-        return new IfNode(origin, expr, block);
+
+        if(!Peek().Is(TokenType.Else)) 
+            return new IfNode(origin, expr, block);
+
+        _ = Pop();
+        if(Peek().Is(TokenType.LCurly))
+        {
+            var @elseBlock = ParseBlock();
+            if(@elseBlock is null) { return null; }
+            return new IfNode(origin, expr, block, @elseBlock);
+        }
+        else if(Peek().Is(TokenType.If))
+        {
+            var elseif = ParseIf();
+            if(elseif is null) { return null; }
+            var @elseBlock = new BlockNode([elseif]);
+            return new IfNode(origin, expr, block, @elseBlock);
+        }
+
+        Report(Error.Expected([TokenType.If, TokenType.LCurly], Peek()));
+        return null;
     }
 
     private static readonly TokenType[] Binops = [TokenType.Plus, TokenType.Minus, TokenType.Mul, TokenType.Div, TokenType.Mod, TokenType.Eq, TokenType.Neq, TokenType.Ls, TokenType.Le, TokenType.Gr, TokenType.Ge];

@@ -35,33 +35,10 @@ mov rbp, rsp
 sub rsp, {Settings.Bytes * fn.VarsInternal.Count}
 {{0}}
 push QWORD[rbp]
-ret";
+ret
+";
 
-            string fnCode = "";
-            foreach(var line in fn.Block.Statements)
-            {
-                if(line is LetNode let)
-                {
-                    var varIndex = fn.VarsInternal.IndexOf(let.Var.WorkingName);
-                    varIndex = (varIndex + 1) * Settings.Bytes;
-
-                    var expr = GenerateExpr(fn, let.Expr);
-                    fnCode += expr;
-                    fnCode += $"pop rax\nmov [rbp-{varIndex}], rax\n";
-                }
-                else if(line is ReturnNode ret)
-                {
-                    if(ret.Nothing) fnCode += "mov rax, 0\n";
-                    else 
-                    {
-                        var expr = GenerateExpr(fn, ret.Expr);
-                        fnCode += expr;
-                        fnCode += "pop rax\n";
-                    }
-
-                    fnCode += "push QWORD[rbp]\nret\n";
-                }
-            }
+            string fnCode = GenerateBlock(fn, fn.Block);
 
             fnBoilerplate = string.Format(fnBoilerplate, fnCode);
 
@@ -73,8 +50,57 @@ ret";
         return result;
     }
 
+    private string GenerateBlock(FndefNode fn, BlockNode block)
+    {
+        string fnCode = "";
+        foreach(var line in block.Statements)
+        {
+            if(line is LetNode let)
+            {
+                var varIndex = fn.VarsInternal.IndexOf(let.Var.WorkingName);
+                varIndex = (varIndex + 1) * Settings.Bytes;
+
+                var expr = GenerateExpr(fn, let.Expr);
+                fnCode += expr;
+                fnCode += $"pop rax\nmov [rbp-{varIndex}], rax\n";
+            }
+            else if(line is ReturnNode ret)
+            {
+                if(ret.Nothing) fnCode += "mov rax, 0\n";
+                else 
+                {
+                    var expr = GenerateExpr(fn, ret.Expr);
+                    fnCode += expr;
+                    fnCode += "pop rax\n";
+                }
+
+                fnCode += "push QWORD[rbp]\nret\n";
+            }
+            else if(line is IfNode ifn)
+            {
+                var endifLabel = GetLabel("endif");
+                var label = GetLabel("else");
+                var condition = GenerateExpr(fn, ifn.Condition);
+
+                fnCode += condition;
+                fnCode += $"pop rax\ncmp rax, 1\njne {label}\n";
+                fnCode += GenerateBlock(fn, ifn.Block);
+                fnCode += $"jmp {endifLabel}\n";
+                fnCode += $"{label}:\n";
+
+                if(ifn.Else is not null)
+                {
+                    fnCode += GenerateBlock(fn, ifn.Else);
+                }
+
+                fnCode += $"{endifLabel}:\n";
+            }
+        }
+        return fnCode;
+    }
+
     private int lastTempLabel = 0;
-    private string GetTempLabel() => $"_$$$temp{lastTempLabel++}";
+    private string GetLabel(string label = "temp") => $"_{label}$$${lastTempLabel++}";
 
     private string GenerateExpr(FndefNode fn, IExpr expr)
     {
@@ -86,9 +112,12 @@ ret";
             result += "pop rbx\n";
             result += "pop rax\n";
 
+            System.Console.WriteLine($"{expr}");
+            System.Console.WriteLine($"{binop.LeftType is null}");
+            System.Console.WriteLine($"{binop.RightType is null}");
             if(binop.LeftType == VType.Int && binop.RightType == VType.Int)
             {
-                var label = GetTempLabel();
+                var label = GetLabel();
                 result += binop.Operator.Type switch 
                 {
                     TokenType.Plus => "add rax, rbx\n",

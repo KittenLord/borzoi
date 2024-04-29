@@ -30,19 +30,21 @@ public class IfNode : IStatement, IContainer
 {
     public IExpr Condition;
     public BlockNode Block;
+    public BlockNode? Else;
     public Token Origin;
 
-    public IfNode(Token origin, IExpr condition, BlockNode block)
+    public IfNode(Token origin, IExpr condition, BlockNode block, BlockNode? elseBlock = null)
     {
         Origin = origin;
         Condition = condition;
         Block = block;
+        Else = elseBlock;
     }
 
     public List<LetNode> GetVariables() => Block.GetVariables();
     public BlockNode GetBlock() => Block;
 
-    public override string ToString() { return $"IF\n{Condition.ToString()!.Indent()}\n{Block.ToString().Indent()}"; }
+    public override string ToString() { return $"IF\n{Condition.ToString()!.Indent()}\n{Block.ToString().Indent()}{(Else is not null ? $"\nELSE\n{Else.ToString().Indent()}" : "")}";}
 }
 
 public class LetNode : IStatement

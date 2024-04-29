@@ -68,5 +68,15 @@ namespace EdComp.Analysis.Msg
         new Message(
             $"Function {fn} must return {supposed}, but instead returns {actual}",
             position);
+
+        public static Message TypeMismatch(VType supposed, VType actual, Token position) =>
+        new Message(
+            $"Expected expression of type {supposed}, found one of type {actual}",
+            position);
+
+        public static Message BinaryOperatorUndefined(Token op, VType left, VType right, Token position) =>
+        new Message(
+            $"Operator {op.Value} for types {left} and {right} is not defined!",
+            position);
     }
 }

@@ -62,13 +62,12 @@ public class Analyzer
 
     private VType GetBinopResult(Token binop, VType left, VType right)
     {
-        if(left.Mods.Count != 0 || right.Mods.Count != 0) return VType.Invalid;
-
         if(IntIntIntBinops.Contains(binop.Type) && left == VType.Int && right == VType.Int) 
             return VType.Int;
         if(IntIntBoolBinops.Contains(binop.Type) && left == VType.Int && right == VType.Int) 
             return VType.Bool;
 
+        Report(Error.BinaryOperatorUndefined(binop, left, right, binop));
         return VType.Invalid;
     }
 
@@ -183,17 +182,6 @@ public class Analyzer
 
         foreach(var line in block.Statements)
         {
-            if(line is IContainer c)
-            {
-                var iprefix = "";
-                if(c is IfNode) iprefix = "if";
-                else throw new System.Exception("cocaine");
-                iprefix = GetPrefix(iprefix);
-                var result = FigureOutTypesAndStuffForABlock(c, fn, prefix + iprefix + "$");
-                if(!result) return false;
-            }
-            else
-            {
                 if(line is LetNode let)
                 {
                     var wname = prefix + let.Name;
@@ -222,6 +210,23 @@ public class Analyzer
                     fn.VarsInternal.Add(wname);
                     Identifiers.Add(id);
                 }
+                else if(line is IfNode ifn)
+                {
+                    var iprefix = GetPrefix("if");
+
+                    var exprType = FigureOutTheTypeOfAExpr(prefix, ifn.Condition);
+                    if(exprType != VType.Bool)
+                    {
+                        Report(Error.TypeMismatch(VType.Bool, exprType, ifn.Origin));
+                        return false;
+                    }
+
+                    var result = FigureOutTypesAndStuffForABlock(ifn.Block, fn, prefix + iprefix + "$");
+                    if(!result) return false;
+                    if(ifn.Else is not null)
+                        result = FigureOutTypesAndStuffForABlock(ifn.Else, fn, prefix + iprefix + "$");
+                    if(!result) return false;
+                }
                 else if(line is ReturnNode ret)
                 {
                     if(ret.Nothing != fn.RetType is null) 
@@ -244,7 +249,6 @@ public class Analyzer
                         }
                     }
                 }
-            }
         }
 
         return true;

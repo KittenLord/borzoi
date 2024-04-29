@@ -14,6 +14,7 @@ public enum TokenType
     Mut,
     Ret,
     If,
+    Else,
 
 
     Plus, Minus, Mul, Div, Mod,
