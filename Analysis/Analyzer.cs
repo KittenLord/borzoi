@@ -57,14 +57,17 @@ public class Analyzer
         return original is not null;
     }
 
-    private static readonly TokenType[] AriphBinops = [TokenType.Plus, TokenType.Minus, TokenType.Mul, TokenType.Div, TokenType.Mod];
+    private static readonly TokenType[] IntIntBoolBinops = [TokenType.Eq, TokenType.Neq, TokenType.Ls, TokenType.Le, TokenType.Gr, TokenType.Gr];
+    private static readonly TokenType[] IntIntIntBinops = [TokenType.Plus, TokenType.Minus, TokenType.Mul, TokenType.Div, TokenType.Mod];
 
     private VType GetBinopResult(Token binop, VType left, VType right)
     {
         if(left.Mods.Count != 0 || right.Mods.Count != 0) return VType.Invalid;
 
-        if(AriphBinops.Contains(binop.Type) && left == VType.Int && right == VType.Int) 
+        if(IntIntIntBinops.Contains(binop.Type) && left == VType.Int && right == VType.Int) 
             return VType.Int;
+        if(IntIntBoolBinops.Contains(binop.Type) && left == VType.Int && right == VType.Int) 
+            return VType.Bool;
 
         return VType.Invalid;
     }
@@ -83,8 +86,18 @@ public class Analyzer
 
             if(fn.RetType is not null && !TypeExists(type.Name, out _))
             {
-                Report(Error.UnknownType(type.Name, def));
+                Report(Error.UnknownType(type.Name, fn.RetTypeT));
                 return false;
+            }
+
+            if(fn.RetType is not null)
+            {
+                var last = fn.Block.Statements.LastOrDefault();
+                if(last is null || last is not ReturnNode)
+                {
+                    Report(Error.NoReturn(fn.Name, fn.RetType, fn.Origin));
+                    return false;
+                }
             }
 
             Identifiers.Add(new Identifier(fn.Name, fn.Name, type, fn.Origin));
@@ -103,7 +116,7 @@ public class Analyzer
 
                 if(!TypeExists(arg.Type.Name, out _))
                 {
-                    Report(Error.UnknownType(arg.Type.Name, def));
+                    Report(Error.UnknownType(arg.Type.Name, fn.Origin));
                     return false;
                 }
 
@@ -142,10 +155,17 @@ public class Analyzer
             return VType.Invalid;
         }
         if(expr is IntLit) return VType.Int;
-        if(expr is BinopNode binop) return GetBinopResult(
-            binop.Operator, 
-            FigureOutTheTypeOfAExpr(prefix, binop.Left), 
-            FigureOutTheTypeOfAExpr(prefix, binop.Right));
+        if(expr is BoolLit) return VType.Bool;
+        if(expr is BinopNode binop) 
+        {
+            var leftType = FigureOutTheTypeOfAExpr(prefix, binop.Left);
+            var rightType = FigureOutTheTypeOfAExpr(prefix, binop.Right);
+            var result = GetBinopResult(binop.Operator, leftType, rightType);
+            binop.Type = result;
+            binop.LeftType = leftType;
+            binop.RightType = rightType;
+            return result;
+        }
         return VType.Invalid;
     }
 
@@ -167,6 +187,7 @@ public class Analyzer
             {
                 var iprefix = "";
                 if(c is IfNode) iprefix = "if";
+                else throw new System.Exception("cocaine");
                 iprefix = GetPrefix(iprefix);
                 var result = FigureOutTypesAndStuffForABlock(c, fn, prefix + iprefix + "$");
                 if(!result) return false;
@@ -184,7 +205,7 @@ public class Analyzer
 
                     if(!TypeExists(let.Type.Name, out _))
                     {
-                        Report(Error.UnknownType(let.Type.Name, def));
+                        Report(Error.UnknownType(let.Type.Name, let.Origin));
                         return false;
                     }
 
@@ -201,6 +222,28 @@ public class Analyzer
                     fn.VarsInternal.Add(wname);
                     Identifiers.Add(id);
                 }
+                else if(line is ReturnNode ret)
+                {
+                    if(ret.Nothing != fn.RetType is null) 
+                    {
+                        if(ret.Nothing) Report(Error.ReturnEmpty(true, ret.Origin));
+                        else Report(Error.ReturnEmpty(false, ret.Origin));
+                        return false;
+                    }
+
+                    if(!ret.Nothing)
+                    {
+                        var exprType = FigureOutTheTypeOfAExpr(prefix, ret.Expr);
+                        if(!exprType.Valid) throw new System.Exception("gg");
+                        // FIXME: Implement actual types in fn.RetType
+                        if(exprType.Name != fn.RetType)
+                        {
+                            System.Console.WriteLine($"MISMATCH");
+                            Report(Error.RetTypeMismatch(fn.Name, new VType(fn.RetType), exprType, ret.Origin));
+                            return false;
+                        }
+                    }
+                }
             }
         }
 
@@ -210,6 +253,7 @@ public class Analyzer
     public void Analyze()
     {
         Types.Add(VType.Int);
+        Types.Add(VType.Bool);
         var result = FigureOutTypesAndStuff();
     }
 }

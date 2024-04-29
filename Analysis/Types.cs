@@ -12,6 +12,7 @@ public enum VTypeMod
 public class VType
 {
     public static VType Int => new("int");
+    public static VType Bool => new("bool");
 
     public bool Valid;
     public string Name;

@@ -68,9 +68,12 @@ public class LetNode : IStatement
 
 public class ReturnNode : IStatement
 {
+    public Token Origin;
+
+    public bool Nothing;
     public IExpr Expr;
-    public ReturnNode(IExpr expr)
-    {
-        Expr = expr;
-    }
+    public ReturnNode(Token o) { Origin = o; Nothing = true; Expr = null; }
+    public ReturnNode(Token o, IExpr expr) { Origin = o; Nothing = false; Expr = expr; }
+
+    public override string ToString() { return $"RET\n{Expr.ToString().Indent()}"; }
 }

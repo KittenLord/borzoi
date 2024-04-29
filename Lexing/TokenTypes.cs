@@ -26,5 +26,5 @@ public enum TokenType
     Id,
     IntLit,
     StrLit,
-    BoolLit, True, False
+    BoolLit,
 }

@@ -192,10 +192,13 @@ public class Parser
     {
         var origin = Pop();
 
+        if(!CanStartLeaf(Peek().Type)) 
+            return new ReturnNode(origin);
+
         var expr = ParseExpr();
         if(expr is null) { return null; }
 
-        return new ReturnNode(expr);
+        return new ReturnNode(origin, expr);
     }
 
     private IfNode? ParseIf()
@@ -214,21 +217,27 @@ public class Parser
         return new IfNode(origin, expr, block);
     }
 
-    private static readonly TokenType[] Binops = [TokenType.Plus, TokenType.Minus, TokenType.Mul, TokenType.Div, TokenType.Mod];
+    private static readonly TokenType[] Binops = [TokenType.Plus, TokenType.Minus, TokenType.Mul, TokenType.Div, TokenType.Mod, TokenType.Eq, TokenType.Neq, TokenType.Ls, TokenType.Le, TokenType.Gr, TokenType.Ge];
     private bool IsBinop(Token binop) { return Binops.Contains(binop.Type); }
     private int GetBinopPriority(Token binop)
     {
         return binop.Type switch 
         {
+            TokenType.Eq or TokenType.Neq or 
+            TokenType.Ls or TokenType.Le or TokenType.Gr or TokenType.Ge => 0,
             TokenType.Plus or TokenType.Minus => 1,
             TokenType.Mul or TokenType.Div or TokenType.Mod => 2,
-            _ => throw new System.Exception("Token is not a binary operator kys")
+            _ => throw new System.Exception($"Token {binop} is not a binary operator kys")
         };
     }
 
+    private static readonly TokenType[] leafTokens = [TokenType.IntLit, TokenType.BoolLit, TokenType.Id, TokenType.LParen];
+    private bool CanStartLeaf(TokenType t) => leafTokens.Contains(t);
     private IExpr? ParseExprLeaf()
     {
+        if(!CanStartLeaf(Peek().Type)) throw new System.Exception("FUUUCK");
         if(Peek().Is(TokenType.IntLit)) return new IntLit(Pop().IntValue);
+        if(Peek().Is(TokenType.BoolLit)) return new BoolLit(Pop().BoolValue);
         if(Peek().Is(TokenType.Id)) return new Var(Peek(), Pop().Value);
         if(Peek().Is(TokenType.LParen))
         {

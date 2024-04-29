@@ -2,14 +2,14 @@ namespace EdComp.ASTn;
 
 public interface IExpr 
 {
-
+    public VType Type { get; set; }
 }
 
 public class Var : IExpr
 {
     public string Name;
     public string WorkingName;
-    public VType Type;
+    public VType Type { get; set; }
     public Token Origin;
 
     public Var(Token origin, string name, string wname = null, VType type = null)
@@ -25,17 +25,31 @@ public class Var : IExpr
 
 public class IntLit : IExpr
 {
+    public VType Type { get; set; } = VType.Int;
     public int Value;
     public IntLit(int value) { Value = value; }
 
     public override string ToString() { return $"{Value} :: Int"; }
 }
 
+public class BoolLit : IExpr
+{
+    public VType Type { get; set; } = VType.Bool;
+    public bool Value;
+    public BoolLit(bool value) { Value = value; }
+
+    public override string ToString() { return $"{Value} :: Bool"; }
+}
+
 public class BinopNode : IExpr
 {
+    public VType Type { get; set; }
     public Token Operator;
     public IExpr Left;
     public IExpr Right;
+
+    public VType LeftType;
+    public VType RightType;
 
     public BinopNode(Token op, IExpr lhs, IExpr rhs)
     {
