@@ -34,6 +34,7 @@ int 80h
 mov rbp, rsp
 sub rsp, {Settings.Bytes * fn.VarsInternal.Count}
 {{0}}
+mov rax, 0
 push QWORD[rbp]
 ret
 ";

@@ -17,25 +17,11 @@ sub rsp, 8
 push 5
 pop rax
 mov [rbp-8], rax
-_do$$$1:
-push 0
-pop rax
-cmp rax, 1
-jne _endwhile$$$0
-push QWORD[rbp-8]
-push 1
-pop rbx
-pop rax
-add rax, rbx
-push rax
-pop rax
-mov [rbp-8], rax
-jmp _do$$$1
-_endwhile$$$0:
 push QWORD[rbp-8]
 pop rax
 push QWORD[rbp]
 ret
 
+mov rax, 0
 push QWORD[rbp]
 ret
