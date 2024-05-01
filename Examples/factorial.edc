@@ -1,9 +1,9 @@
 fn main() int {
     let int n = 4
-    ret factorial(5)
+    ret factorial(n)
 }
 
-fn factorial(5) int {
+fn factorial(int n) int {
     if n == 0 { ret 1 }
     if n == 1 { ret 1 }
     ret factorial(n - 1) * n
