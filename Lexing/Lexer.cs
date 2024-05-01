@@ -95,10 +95,7 @@ public class Lexer
         {
             Popc();
             if(PeekPred(Eq('=')))
-            {
-                Popc();
-                return Put(TokenType.Eq, "==");
-            }
+            { Popc(); return Put(TokenType.Eq, "=="); }
             return Put(TokenType.Assign, "=");
         }
 
@@ -106,10 +103,7 @@ public class Lexer
         {
             Popc();
             if(PeekPred(Eq('=')))
-            {
-                Popc();
-                return Put(TokenType.Neq, "!=");
-            }
+            { Popc(); return Put(TokenType.Neq, "!="); }
             return Put(TokenType.Not, "!");
         }
 
@@ -117,10 +111,7 @@ public class Lexer
         {
             Popc();
             if(PeekPred(Eq('=')))
-            {
-                Popc();
-                return Put(TokenType.Le, "<=");
-            }
+            { Popc(); return Put(TokenType.Le, "<="); }
             return Put(TokenType.Ls, "<");
         }
 
@@ -128,10 +119,7 @@ public class Lexer
         {
             Popc();
             if(PeekPred(Eq('=')))
-            {
-                Popc();
-                return Put(TokenType.Ge, ">=");
-            }
+            { Popc(); return Put(TokenType.Ge, ">="); }
             return Put(TokenType.Gr, ">");
         }
 
@@ -146,6 +134,8 @@ public class Lexer
         var id = ids.str();
 
         if(id == "fn") return Put(TokenType.Fn, id);
+        if(id == "cfn") return Put(TokenType.Cfn, id);
+        if(id == "call") return Put(TokenType.Call, id);
         if(id == "let") return Put(TokenType.Let, id);
         if(id == "mut") return Put(TokenType.Mut, id);
         if(id == "ret") return Put(TokenType.Ret, id);

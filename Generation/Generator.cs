@@ -149,9 +149,9 @@ ret
             result += "pop rbx\n";
             result += "pop rax\n";
 
-            System.Console.WriteLine($"{expr}");
-            System.Console.WriteLine($"{binop.LeftType is null}");
-            System.Console.WriteLine($"{binop.RightType is null}");
+            // System.Console.WriteLine($"{expr}");
+            // System.Console.WriteLine($"{binop.LeftType is null}");
+            // System.Console.WriteLine($"{binop.RightType is null}");
             if(binop.LeftType == VType.Int && binop.RightType == VType.Int)
             {
                 var label = GetLabel();

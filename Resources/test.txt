@@ -1,10 +1,3 @@
-fn main() int {
-    let int n = 10
-    ret fibonacci(n)
+fn main() {
+    
 }
-
-fn fibonacci(int n) int {
-    if n <= 1 { ret 1 }
-    ret fibonacci(n - 1) + fibonacci(n - 2)
-}
-

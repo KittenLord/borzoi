@@ -304,20 +304,24 @@ public class Parser
                     _ = Pop();
 
                     bool exit = false;
-                    while(CanStartLeaf(Peek().Type))
+                    if(!Peek().Is(TokenType.RParen))
                     {
-                        var expr = ParseExpr();
-                        if(expr is null) { return null; }
-                        func.Args.Add(expr);
+                        while(CanStartLeaf(Peek().Type))
+                        {
+                            var expr = ParseExpr();
+                            if(expr is null) { return null; }
+                            func.Args.Add(expr);
 
-                        if(Peek().Is(TokenType.Comma)) { _ = Pop(); continue; }
-                        if(Peek().Is(TokenType.RParen)) { exit = true; _ = Pop(); break; }
+                            if(Peek().Is(TokenType.Comma)) { _ = Pop(); continue; }
+                            if(Peek().Is(TokenType.RParen)) { exit = true; _ = Pop(); break; }
+                        }
+                        if(!exit)
+                        {
+                            Report(Error.Expected([TokenType.RParen], Peek()));
+                            return null;
+                        }
                     }
-                    if(!exit)
-                    {
-                        Report(Error.Expected([TokenType.RParen], Peek()));
-                        return null;
-                    }
+                    else Pop();
                 }
             }
 

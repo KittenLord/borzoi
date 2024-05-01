@@ -323,7 +323,7 @@ public class Analyzer
                 if(!ret.Nothing)
                 {
                     var exprType = FigureOutTheTypeOfAExpr(prefix, ret.Expr);
-                    if(!exprType.Valid) throw new System.Exception("gg");
+                    if(!exprType.Valid) return false;
                     // FIXME: Implement actual types in fn.RetType
                     if(exprType != fn.RetType)
                     {

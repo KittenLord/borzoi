@@ -10,6 +10,8 @@ public enum TokenType
 
 
     Fn,
+    Cfn,
+    Call,
     Let,
     Mut,
     Ret,
