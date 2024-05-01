@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.Linq;
+
 namespace EdComp.ASTn;
 
 public interface IExpr 
@@ -12,6 +15,8 @@ public class Var : IExpr
     public VType Type { get; set; }
     public Token Origin;
 
+    public List<IAccessor> Accessors = new();
+
     public Var(Token origin, string name, string wname = null, VType type = null)
     {
         Origin = origin;
@@ -20,7 +25,19 @@ public class Var : IExpr
         Type = type;
     }
 
-    public override string ToString() { return $"{Name} (Var)"; }
+    public override string ToString() { return $"{Name} (Var)\n{(string.Join("\n", Accessors).Indent())}"; }
+}
+
+public interface IAccessor { string Label { get; } }
+public class FuncAcc : IAccessor
+{
+    public string Label => "function";
+    public List<IExpr> Args = new();
+
+    public FuncAcc() : this(new List<IExpr>()) {}
+    public FuncAcc(IEnumerable<IExpr> args) { Args = args.ToList(); }
+
+    public override string ToString() { return $"$\n{string.Join("\n", Args).Indent()}"; }
 }
 
 public class IntLit : IExpr

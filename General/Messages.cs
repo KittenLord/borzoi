@@ -54,7 +54,7 @@ namespace EdComp.Analysis.Msg
             $"Variable {varname} is not declared in this scope",
             position);
 
-        public static Message NoReturn(string fnName, string type, Token position) =>
+        public static Message NoReturn(string fnName, VType type, Token position) =>
         new Message(
             $"Function {fnName} must return a value of type {type} in the end",
             position);
@@ -82,6 +82,21 @@ namespace EdComp.Analysis.Msg
         public static Message NoEntryPoint() =>
         new Message(
             $"The program does not contain a \"main\" function",
+            new Token(TokenType.Illegal, "", 0, 0, 0));
+
+        public static Message CantAccess(EdComp.ASTn.IAccessor access) =>
+        new Message(
+            $"Can't access value using {access} access",
+            new Token(TokenType.Illegal, "", 0, 0, 0));
+
+        public static Message FnCallArgsCount(int expected, int actual) =>
+        new Message(
+            $"Invalid function call - expected {expected} arguments, but was provided {actual}",
+            new Token(TokenType.Illegal, "", 0, 0, 0));
+
+        public static Message FnCallArgType(int pos, VType expected, VType actual) =>
+        new Message(
+            $"Invalid function call - argument {pos} is defined to be {expected}, but {actual} value has been provided",
             new Token(TokenType.Illegal, "", 0, 0, 0));
     }
 }

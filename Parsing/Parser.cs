@@ -93,8 +93,10 @@ public class Parser
         if(!Peek().Is(TokenType.Id, TokenType.LCurly)) 
         { Report(Error.Expected([TokenType.Id, TokenType.LCurly], Peek())); return null; }
 
-        var type = (Token?)null;
-        if(Peek().Is(TokenType.Id)) { type = Pop(); }
+        var typeT = (Token?)null;
+        if(Peek().Is(TokenType.Id)) { typeT = Pop(); }
+        // TODO: Proper parsing
+        var type = typeT is null ? VType.Void : new VType(typeT.Value);
 
         if(!Peek().Is(TokenType.LCurly)) 
         { Report(Error.Expected([TokenType.LCurly], Peek())); return null; }
@@ -102,7 +104,7 @@ public class Parser
         var block = ParseBlock();
         if(block is null) { return null; }
 
-        return new FndefNode(origin, name, args, type, block);
+        return new FndefNode(origin, name, args, type, typeT, block);
     }
 
     private BlockNode? ParseBlock()
@@ -287,7 +289,40 @@ public class Parser
         if(!CanStartLeaf(Peek().Type)) throw new System.Exception("FUUUCK");
         if(Peek().Is(TokenType.IntLit)) return new IntLit(Pop().IntValue);
         if(Peek().Is(TokenType.BoolLit)) return new BoolLit(Pop().BoolValue);
-        if(Peek().Is(TokenType.Id)) return new Var(Peek(), Pop().Value);
+        if(Peek().Is(TokenType.Id)) 
+        {
+            var varn = new Var(Peek(), Pop().Value);
+
+            TokenType[] acclah = [TokenType.LParen];
+            while(Peek().Is(acclah))
+            {
+                if(Peek().Is(TokenType.LParen))
+                {
+                    var func = new FuncAcc();
+                    varn.Accessors.Add(func);
+
+                    _ = Pop();
+
+                    bool exit = false;
+                    while(CanStartLeaf(Peek().Type))
+                    {
+                        var expr = ParseExpr();
+                        if(expr is null) { return null; }
+                        func.Args.Add(expr);
+
+                        if(Peek().Is(TokenType.Comma)) { _ = Pop(); continue; }
+                        if(Peek().Is(TokenType.RParen)) { exit = true; _ = Pop(); break; }
+                    }
+                    if(!exit)
+                    {
+                        Report(Error.Expected([TokenType.RParen], Peek()));
+                        return null;
+                    }
+                }
+            }
+
+            return varn;
+        }
         if(Peek().Is(TokenType.LParen))
         {
             _ = Pop();

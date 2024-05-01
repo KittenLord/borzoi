@@ -81,15 +81,16 @@ public class Analyzer
                 return false;
             }
 
-            var type = fn.RetType is null ? new VType() : new VType(fn.RetType, VTypeMod.Fn);
+            var type = fn.RetType.Copy();
+            type.Mods.Add(VTypeMod.Fn(fn.Args.Select(a => a.Type)));
 
-            if(fn.RetType is not null && !TypeExists(type.Name, out _))
+            if(fn.RetTypeT is not null && !TypeExists(type.Name, out _))
             {
                 Report(Error.UnknownType(type.Name, fn.RetTypeT));
                 return false;
             }
 
-            if(fn.RetType is not null)
+            if(fn.RetType != VType.Void)
             {
                 var last = fn.Block.Statements.LastOrDefault();
                 if(last is null || last is not ReturnNode)
@@ -145,6 +146,10 @@ public class Analyzer
             stack.Pop();
             stack.Pop();
         }
+        stack.Push(varn.Name);
+        var wname_ = string.Join("$", stack.Reverse());
+        var id_ = Identifiers.Find(i => i.WorkingName == wname_);
+        if(id_ is not null) { varn.Type = id_.Type; varn.WorkingName = wname_; return id_; }
         return null;
     }
 
@@ -152,13 +157,57 @@ public class Analyzer
     {
         if(expr is Var varn)
         {
-            if(varn.Type is not null) return varn.Type;
+            var type = varn.Type;
+            if(type is null)
+            {
+                var id = GetRelevantId(varn, prefix);
+                if(id is not null) type = id.Type;
+            }
 
-            var id = GetRelevantId(varn, prefix);
-            if(id is not null) return id.Type;
+            if(type is null)
+            {
+                Report(Error.VariableDoesntExist(varn.Name, varn.Origin));
+                return VType.Invalid;
+            }
 
-            Report(Error.VariableDoesntExist(varn.Name, varn.Origin));
-            return VType.Invalid;
+            type = type.Copy();
+            foreach(var accessor in varn.Accessors)
+            {
+                if(type.Mods.Count <= 0) 
+                {
+                    Report(Error.CantAccess(accessor));
+                    return VType.Invalid;
+                }
+
+                if(accessor is FuncAcc func)
+                {
+                    if(type.Mods[0] is not VFunc funcProto)
+                    {
+                        Report(Error.CantAccess(accessor));
+                        return VType.Invalid;
+                    }
+
+                    if(funcProto.Args.Count != func.Args.Count)
+                    {
+                        Report(Error.FnCallArgsCount(funcProto.Args.Count, func.Args.Count));
+                        return VType.Invalid;
+                    }
+
+                    for(int i = 0; i < funcProto.Args.Count; i++)
+                    {
+                        var argType = FigureOutTheTypeOfAExpr(prefix, func.Args[i]);
+                        if(argType != funcProto.Args[i])
+                        {
+                            Report(Error.FnCallArgType(i, funcProto.Args[i], argType));
+                            return VType.Invalid;
+                        }
+                    }
+
+                    type.Mods.RemoveAt(0);
+                }
+                else throw new System.Exception();
+            }
+            return type;
         }
         if(expr is IntLit) return VType.Int;
         if(expr is BoolLit) return VType.Bool;
@@ -276,10 +325,10 @@ public class Analyzer
                     var exprType = FigureOutTheTypeOfAExpr(prefix, ret.Expr);
                     if(!exprType.Valid) throw new System.Exception("gg");
                     // FIXME: Implement actual types in fn.RetType
-                    if(exprType.Name != fn.RetType)
+                    if(exprType != fn.RetType)
                     {
                         System.Console.WriteLine($"MISMATCH");
-                        Report(Error.RetTypeMismatch(fn.Name, new VType(fn.RetType), exprType, ret.Origin));
+                        Report(Error.RetTypeMismatch(fn.Name, fn.RetType, exprType, ret.Origin));
                         return false;
                     }
                 }
@@ -293,6 +342,7 @@ public class Analyzer
     {
         Types.Add(VType.Int);
         Types.Add(VType.Bool);
+        Types.Add(VType.Void);
         if(!AST.Fndefs.Any(fn => fn.Name == "main"))
         {
             Report(Error.NoEntryPoint());

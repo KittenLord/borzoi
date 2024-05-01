@@ -15,23 +15,24 @@ public class FndefNode : IContainer
     public List<(VType Type, string Name)> Args => 
         ArgsT.Select(a => (a.Type, a.Name.Value))
              .ToList();
-    public string? RetType => RetTypeT?.Value;
 
     public Token Origin;
     public Token NameT;
     public List<(VType Type, Token Name)> ArgsT;
+    public VType RetType;
     public Token? RetTypeT;
     public BlockNode Block;
 
     public List<string> ArgsInternal;
     public List<string> VarsInternal;
 
-    public FndefNode(Token origin, Token name, List<(VType type, Token name)> args, Token? retType, BlockNode block)
+    public FndefNode(Token origin, Token name, List<(VType type, Token name)> args, VType retType, Token? retTypeT, BlockNode block)
     {
         Origin = origin;
         NameT = name;
         ArgsT = args;
-        RetTypeT = retType;
+        RetType = retType;
+        RetTypeT = retTypeT;
         ArgsT = args;
         Block = block;
 
@@ -43,7 +44,7 @@ public class FndefNode : IContainer
     public BlockNode GetBlock() => Block;
 
     public override string ToString() 
-    { return $"fn {Name} :: ({string.Join(" , ", Args.Select(a => $"{a.Name} :: {a.Type}"))}) -> {(RetType ?? "e")}\n{Block}"; }
+    { return $"fn {Name} :: ({string.Join(" , ", Args.Select(a => $"{a.Name} :: {a.Type}"))}) -> {(RetType)}\n{Block}"; }
 }
 
 public class BlockNode : IContainer

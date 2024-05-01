@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.Linq;
+
 using EdComp.ASTn;
 
 namespace EdComp.Generation;
@@ -184,14 +187,34 @@ ret
         }
         else if(expr is Var varl)
         {
-            var isArg = fn.ArgsInternal.Contains(varl.WorkingName);
-            var index = isArg 
-                ? (fn.ArgsInternal.IndexOf(varl.WorkingName) + 2) * Settings.Bytes
-                : (fn.VarsInternal.IndexOf(varl.WorkingName) + 1) * Settings.Bytes;
-            if(isArg)
-                result += $"push QWORD[rbp+{index}]\n";
-            else
-                result += $"push QWORD[rbp-{index}]\n";
+            if(varl.Accessors.Count == 0 || varl.Accessors.First() is not FuncAcc)
+            {
+                var isArg = fn.ArgsInternal.Contains(varl.WorkingName);
+                var index = isArg 
+                    ? (fn.ArgsInternal.IndexOf(varl.WorkingName) + 2) * Settings.Bytes
+                    : (fn.VarsInternal.IndexOf(varl.WorkingName) + 1) * Settings.Bytes;
+                if(isArg)
+                    result += $"push QWORD[rbp+{index}]\n";
+                else
+                    result += $"push QWORD[rbp-{index}]\n";
+            }
+            else if(varl.Accessors.First() is FuncAcc func)
+            {
+                var label = varl.WorkingName;
+                var args = new List<IExpr>(func.Args);
+                args.Reverse();
+                foreach(var arg in args)
+                    { result += GenerateExpr(fn, arg); } 
+                result += "push rbp\n";
+                result += $"call {label}\n";
+                result += "mov rsp, rbp\n";
+                result += $"add rsp, {Settings.Bytes}\n";
+                result += "pop rbp\n";
+                result += $"add rsp, {Settings.Bytes * args.Count}\n";
+                result += "push rax\n";
+            }
+
+            // TODO: Array/pointer stuff here
         }
 
          return result;
