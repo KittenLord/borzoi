@@ -40,6 +40,17 @@ public class FuncAcc : IAccessor
     public override string ToString() { return $"$\n{string.Join("\n", Args).Indent()}"; }
 }
 
+public class ArrayAcc : IAccessor
+{
+    public string Label => "array";
+
+    public Token Origin;
+    public IExpr Index;
+    public ArrayAcc(Token origin, IExpr index) { Origin = origin; Index = index; }
+
+    public override string ToString() { return $"[$]\n{Index.ToString().Indent()}"; }
+}
+
 public class IntLit : IExpr
 {
     public VType Type { get; set; } = VType.Int;
@@ -56,6 +67,24 @@ public class BoolLit : IExpr
     public BoolLit(bool value) { Value = value; }
 
     public override string ToString() { return $"{Value} :: Bool"; }
+}
+
+public class ArrayLit : IExpr
+{
+    public VType? Type { get; set; }
+    public List<IExpr> Elems = new();
+
+    public override string ToString() { return $"[{Elems.Count}]\n{string.Join("\n", Elems).Indent()}"; }
+}
+
+public class ArrayInitOp : IExpr
+{
+    public VType? Type { get; set; }
+    public Token Origin;
+    public IExpr Expr;
+
+    public ArrayInitOp(Token origin, IExpr expr) { Origin = origin; Expr = expr; }
+    public override string ToString() { return $"[*]\n{Expr.ToString().Indent()}"; }
 }
 
 public class BinopNode : IExpr

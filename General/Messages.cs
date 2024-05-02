@@ -32,6 +32,7 @@ namespace EdComp.Lexing.Msg
 
 namespace EdComp.Analysis.Msg
 {
+    // TODO: Add message positions for some errors that I was too lazy to implement
     public static class Error
     {
         public static Message AlreadyExists(string name, Token original, Token repeat) =>
@@ -76,7 +77,7 @@ namespace EdComp.Analysis.Msg
 
         public static Message BinaryOperatorUndefined(Token op, VType left, VType right, Token position) =>
         new Message(
-            $"Operator {op.Value} for types {left} and {right} is not defined!",
+            $"Operator {op.Value} for types {left} and {right} is not defined",
             position);
 
         public static Message NoEntryPoint() =>
@@ -98,5 +99,10 @@ namespace EdComp.Analysis.Msg
         new Message(
             $"Invalid function call - argument {pos} is defined to be {expected}, but {actual} value has been provided",
             new Token(TokenType.Illegal, "", 0, 0, 0));
+
+        public static Message DynamicToFixedArray(Token pos) =>
+        new Message(
+            $"Cannot use a variable-sized array as a fixed-sized one",
+            pos);
     }
 }

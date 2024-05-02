@@ -153,7 +153,7 @@ public class Analyzer
         return null;
     }
 
-    private VType FigureOutTheTypeOfAExpr(string prefix, IExpr expr)
+    private VType FigureOutTheTypeOfAExpr(string prefix, IExpr expr, VType hint)
     {
         if(expr is Var varn)
         {
@@ -195,12 +195,29 @@ public class Analyzer
 
                     for(int i = 0; i < funcProto.Args.Count; i++)
                     {
-                        var argType = FigureOutTheTypeOfAExpr(prefix, func.Args[i]);
+                        var argType = FigureOutTheTypeOfAExpr(prefix, func.Args[i], func.Args[i].Type);
                         if(argType != funcProto.Args[i])
                         {
                             Report(Error.FnCallArgType(i, funcProto.Args[i], argType));
                             return VType.Invalid;
                         }
+                    }
+
+                    type.Mods.RemoveAt(0);
+                }
+                else if(accessor is ArrayAcc arrAcc)
+                {
+                    if(type.Mods[0] is not VArray arrProto)
+                    {
+                        Report(Error.CantAccess(accessor));
+                        return VType.Invalid;
+                    }
+
+                    var indexType = FigureOutTheTypeOfAExpr(prefix, arrAcc.Index, hint);
+                    if(indexType != VType.Int)
+                    {
+                        Report(Error.TypeMismatch(VType.Int, indexType, arrAcc.Origin));
+                        return VType.Invalid;
                     }
 
                     type.Mods.RemoveAt(0);
@@ -211,10 +228,63 @@ public class Analyzer
         }
         if(expr is IntLit) return VType.Int;
         if(expr is BoolLit) return VType.Bool;
+        if(expr is ArrayLit arr)
+        {
+            // Infer type of an empty array
+            if(arr.Elems.Count <= 0 && 
+               hint != VType.Invalid &&
+               hint.Mods.Count > 0 &&
+               hint.Mods.Last() is VArray)
+                return hint.Copy();
+
+            // Not enough information to infer the type from
+            if(arr.Elems.Count <= 0)
+                { return VType.Invalid; }
+
+            var elemHint = VType.Invalid;
+            if(hint.Mods.Count > 0 && hint.Mods.Last() is VArray)
+            {
+                elemHint = hint.Copy();
+                elemHint.Mods.RemoveAt(elemHint.Mods.Count - 1);
+            }
+
+            var types = arr.Elems.Select(elem => FigureOutTheTypeOfAExpr(prefix, elem, elemHint));
+            var type = types.First().Copy();
+            var same = types.All(t => t == type);
+
+            if(!same)
+            {
+                // TODO: Report your errors you lazy fuck
+                return VType.Invalid;
+            }
+
+            type.Mods.Add(VTypeMod.Arr(arr.Elems.Count));
+            arr.Type = type;
+            return type;
+        }
+        if(expr is ArrayInitOp arri)
+        {
+            if(hint == VType.Invalid) return VType.Invalid;
+            if(hint.Mods.Count == 0) return VType.Invalid;
+            if(hint.Mods.Last() is not VArray arrHint) return VType.Invalid;
+            if(arrHint.Fixed)
+                { Report(Error.DynamicToFixedArray(arri.Origin)); return VType.Invalid; }
+
+            var sizeExprType = FigureOutTheTypeOfAExpr(prefix, arri.Expr, VType.Int);
+            if(sizeExprType != VType.Int)
+            {
+                Report(Error.TypeMismatch(VType.Int, sizeExprType, arri.Origin));
+                return VType.Invalid;
+            }
+
+            var type = hint.Copy();
+            arri.Type = type;
+            return type;
+        }
         if(expr is BinopNode binop) 
         {
-            var leftType = FigureOutTheTypeOfAExpr(prefix, binop.Left);
-            var rightType = FigureOutTheTypeOfAExpr(prefix, binop.Right);
+            var leftType = FigureOutTheTypeOfAExpr(prefix, binop.Left, VType.Invalid);
+            var rightType = FigureOutTheTypeOfAExpr(prefix, binop.Right, VType.Invalid);
             var result = GetBinopResult(binop.Operator, leftType, rightType);
             binop.Type = result;
             binop.LeftType = leftType;
@@ -253,8 +323,8 @@ public class Analyzer
                     return false;
                 }
 
-                var exprType = FigureOutTheTypeOfAExpr(prefix, let.Expr);
-                // FIXME: If exprType == VType.Invalid, report that the operator for those types isn't defined
+                var exprType = FigureOutTheTypeOfAExpr(prefix, let.Expr, let.Type);
+
                 if(exprType != let.Type)
                 {
                     Report(Error.LetTypeMismatch(let.Name, let.Type.ToString(), exprType.ToString(), let.Origin));
@@ -273,7 +343,7 @@ public class Analyzer
                 var id = GetRelevantId(mut.Var, prefix);
                 if(id is null) return false;
 
-                var type = FigureOutTheTypeOfAExpr(prefix, mut.Expr);
+                var type = FigureOutTheTypeOfAExpr(prefix, mut.Expr, id.Type);
                 if(id.Type != type) 
                 {
                     Report(Error.TypeMismatch(id.Type, type, mut.Origin));
@@ -284,7 +354,7 @@ public class Analyzer
             {
                 var iprefix = GetPrefix("if");
 
-                var exprType = FigureOutTheTypeOfAExpr(prefix, ifn.Condition);
+                var exprType = FigureOutTheTypeOfAExpr(prefix, ifn.Condition, VType.Bool);
                 if(exprType != VType.Bool)
                 {
                     Report(Error.TypeMismatch(VType.Bool, exprType, ifn.Origin));
@@ -301,7 +371,7 @@ public class Analyzer
             {
                 var iprefix = GetPrefix("while");
 
-                var exprType = FigureOutTheTypeOfAExpr(prefix, wh.Condition);
+                var exprType = FigureOutTheTypeOfAExpr(prefix, wh.Condition, VType.Bool);
                 if(exprType != VType.Bool)
                 {
                     Report(Error.TypeMismatch(VType.Bool, exprType, wh.Origin));
@@ -322,9 +392,8 @@ public class Analyzer
 
                 if(!ret.Nothing)
                 {
-                    var exprType = FigureOutTheTypeOfAExpr(prefix, ret.Expr);
+                    var exprType = FigureOutTheTypeOfAExpr(prefix, ret.Expr, fn.RetType);
                     if(!exprType.Valid) return false;
-                    // FIXME: Implement actual types in fn.RetType
                     if(exprType != fn.RetType)
                     {
                         System.Console.WriteLine($"MISMATCH");

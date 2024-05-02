@@ -5,12 +5,21 @@ namespace EdComp;
 
 public interface VTypeMod 
 {
+    public bool Same(VTypeMod other);
+
     public static VFunc Fn(params VType[] args) => new VFunc() { Args = args.ToList() };
     public static VFunc Fn(IEnumerable<VType> args) => new VFunc() { Args = args.ToList() };
+    public static VArray Arr() => new VArray();
+    public static VArray Arr(int size) => new VArray(size);
 }
 
 public class VFunc : VTypeMod 
 {
+    public bool Same(VTypeMod other) => 
+        other is VFunc func &&
+        func.Args.Count == this.Args.Count &&
+        this.Args.Select((a, i) => a == func.Args[i]).All(b => b);
+
     public List<VType> Args = new();
 
     public override string ToString() { return "(" + string.Join(", ", Args) + ")"; }
@@ -18,7 +27,15 @@ public class VFunc : VTypeMod
 
 public class VArray : VTypeMod
 {
+    public bool Same(VTypeMod other) =>
+        other is VArray arr &&
+        (arr.Size == this.Size || !arr.Fixed || !this.Fixed);
 
+    public bool Fixed;
+    public int Size;
+
+    public VArray() { Fixed = false; Size = -1; }
+    public VArray(int size) { Fixed = true; Size = size; }
 }
 
 // FUCK Equals() and GetHashCode(), all my homies FUCKING HATE Equals() and GetHashCode()
@@ -44,11 +61,10 @@ public class VType
         Mods = mods;
     }
 
-    public static bool operator ==(VType l, VType r) => l.Name == r.Name && l.Mods.SequenceEqual(r.Mods);
+    public static bool operator ==(VType l, VType r) => l.Name == r.Name && l.Mods.Count == r.Mods.Count && l.Mods.Select((m, i) => m.Same(r.Mods[i])).All(b => b);
     public static bool operator !=(VType l, VType r) => !(l == r);
 
-    // TODO: parens & brackets
     public override string ToString() { return (Name == "" ? "void" : Name) + string.Join("", Mods.Select(mod => mod switch { 
                 VFunc fn => $"({string.Join(", ", fn.Args)})", 
-                VArray arr => "[]" })); }
+                VArray arr => $"[{(arr.Fixed ? arr.Size.ToString() : "")}]" })); }
 }

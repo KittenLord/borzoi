@@ -69,15 +69,15 @@ public class Parser
             if(!Peek().Is(TokenType.Id)) 
             { Report(Error.Expected([TokenType.Id], Peek())); return null; }
 
-            var argType = Pop();
+            var argType = ParseType();
+            if(argType is null) { return null; }
 
             if(!Peek().Is(TokenType.Id)) 
             { Report(Error.Expected([TokenType.Id], Peek())); return null; }
 
             var argName = Pop();
 
-            var argVType = new VType(argType.Value);
-            args.Add((argVType, argName));
+            args.Add((argType, argName));
 
             if(Peek().Is(TokenType.RParen)) continue;
             else if(Peek().Is(TokenType.Comma)) 
@@ -93,10 +93,9 @@ public class Parser
         if(!Peek().Is(TokenType.Id, TokenType.LCurly)) 
         { Report(Error.Expected([TokenType.Id, TokenType.LCurly], Peek())); return null; }
 
+        var type = VType.Void;
         var typeT = (Token?)null;
-        if(Peek().Is(TokenType.Id)) { typeT = Pop(); }
-        // TODO: Proper parsing
-        var type = typeT is null ? VType.Void : new VType(typeT.Value);
+        if(Peek().Is(TokenType.Id)) { typeT = Peek(); type = ParseType(); }
 
         if(!Peek().Is(TokenType.LCurly)) 
         { Report(Error.Expected([TokenType.LCurly], Peek())); return null; }
@@ -105,6 +104,30 @@ public class Parser
         if(block is null) { return null; }
 
         return new FndefNode(origin, name, args, type, typeT, block);
+    }
+
+    private VType? ParseType() 
+    {
+        var type = new VType(Pop().Value);
+        TokenType[] modlah = [TokenType.LBrack];
+
+        while(modlah.Contains(Peek().Type))
+        {
+            if(Peek().Is(TokenType.LBrack))
+            {
+                _ = Pop();
+                if(Peek().Is(TokenType.IntLit)) 
+                    { var size = Pop().IntValue; type.Mods.Add(VTypeMod.Arr(size)); }
+                else 
+                    type.Mods.Add(VTypeMod.Arr());
+                if(Peek().Is(TokenType.RBrack)) { Pop(); continue; }
+                Report(Error.Expected([TokenType.RBrack], Peek()));
+                return null;
+            }
+            else throw new System.Exception("AAAAAAAA");
+        }
+
+        return type;
     }
 
     private BlockNode? ParseBlock()
@@ -158,7 +181,8 @@ public class Parser
         if(!Peek().Is(TokenType.Id)) 
         { Report(Error.Expected([TokenType.Id], Peek())); return null; }
 
-        var type = Pop();
+        var type = ParseType();
+        if(type is null) { return null; }
 
         if(!Peek().Is(TokenType.Id)) 
         { Report(Error.Expected([TokenType.Id], Peek())); return null; }
@@ -173,8 +197,7 @@ public class Parser
         if(expr is null) { return null; }
         
         // TODO: Type mods
-        var vtype = new VType(type.Value);
-        return new LetNode(origin, vtype, name, expr);
+        return new LetNode(origin, type, name, expr);
     }
 
     private MutNode? ParseMut()
@@ -282,7 +305,7 @@ public class Parser
         };
     }
 
-    private static readonly TokenType[] leafTokens = [TokenType.IntLit, TokenType.BoolLit, TokenType.Id, TokenType.LParen];
+    private static readonly TokenType[] leafTokens = [TokenType.IntLit, TokenType.BoolLit, TokenType.Id, TokenType.LParen, TokenType.LBrack, TokenType.Mul];
     private bool CanStartLeaf(TokenType t) => leafTokens.Contains(t);
     private IExpr? ParseExprLeaf()
     {
@@ -293,7 +316,7 @@ public class Parser
         {
             var varn = new Var(Peek(), Pop().Value);
 
-            TokenType[] acclah = [TokenType.LParen];
+            TokenType[] acclah = [TokenType.LParen, TokenType.LBrack];
             while(Peek().Is(acclah))
             {
                 if(Peek().Is(TokenType.LParen))
@@ -323,6 +346,27 @@ public class Parser
                     }
                     else Pop();
                 }
+                else if(Peek().Is(TokenType.LBrack))
+                {
+                    var origin = Pop();
+                    if(!CanStartLeaf(Peek().Type))
+                    {
+                        Report(Error.Expected(leafTokens, Peek()));
+                        return null;
+                    }
+
+                    var index = ParseExpr();
+                    if(index is null) { return null; }
+
+                    if(!Peek().Is(TokenType.RBrack))
+                    {
+                        Report(Error.Expected([TokenType.RBrack], Peek()));
+                        return null;
+                    }
+
+                    _ = Pop();
+                    varn.Accessors.Add(new ArrayAcc(origin, index));
+                }
             }
 
             return varn;
@@ -340,6 +384,33 @@ public class Parser
 
             Report(Error.Expected([TokenType.RParen], Peek()));
             return null;
+        }
+        if(Peek().Is(TokenType.LBrack))
+        {
+            _ = Pop();
+            var arr = new ArrayLit();
+            while(CanStartLeaf(Peek().Type))
+            {
+                var expr = ParseExpr();
+                if(expr is null) { return null; }
+                arr.Elems.Add(expr);
+
+                if(Peek().Is(TokenType.Comma)) { Pop(); continue; }
+                if(Peek().Is(TokenType.RBrack)) { break; }
+            }
+
+            if(Peek().Is(TokenType.RBrack)) { Pop(); return arr; }
+            Report(Error.Expected([TokenType.Comma, TokenType.RBrack], Peek()));
+            return null;
+        }
+        if(Peek().Is(TokenType.Mul))
+        {
+            var origin = Pop();
+            if(!CanStartLeaf(Peek().Type)) 
+                { Report(Error.Expected(leafTokens, Peek())); return null; }
+            var expr = ParseExpr();
+            if(expr is null) { return null; }
+            return new ArrayInitOp(origin, expr);
         }
         Report("fuck", Peek());
         return null;
