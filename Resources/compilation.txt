@@ -1,3 +1,69 @@
 So I think I've kinda figured it out, it'll be pretty much a stack machine with 
 pre-allocated function arguments. I'm not compleeeeetely sure how it will work
 out, but it'll be okay (I'll plan here in the future)
+
+The time has come - I need to figure out how to do memory management (particularly
+because I am currently doing arrays). I'm not planning to be memory efficient, and
+probably anything greater than 64 bits will be heap allocated (using C stdlib lol),
+but at the same time I don't want to create memory leaks - even (especially!) an 
+educational project should be well thought through.
+
+So, the current idea is - anything that's allocated on the stack - I don't care about.
+So int/bool/other future types will be stack allocated, which automatically makes memory
+management quite easy. I wonder what I should do with pointers though - for example,
+if you return a pointer to the stack frame, it might cause some funny stuff. One solution
+is to set such pointers to null, which, now that I think about it, causes even more
+problems. There are a lot of problems stemming from mutating the pointer variable - picture
+a code like this:
+
+    let int a = 5
+    let int@ ap = @a
+
+    if(random()) {
+        let@ int b = 5 # Hypothetical heap allocation syntax
+        mut ap = b
+    }
+
+    ret ap
+
+so after returning, ap can point both to a stack value and a heap value, and good luck 
+statically-analyzing that shit (afaik, this similar to the whole Rust's explicit lifetimes
+bullshit).
+
+Another option is to go the C way and simply not give a shit - wanna get a dangling pointer,
+no problem.
+
+We could also simply forbid to create pointers manually, with heap allocation being the only
+source of them, but I don't really like that either. If you wanna do smth like
+
+    let int a = 5
+    inc(@a)
+
+you need to instead do this
+
+    let int a = 5
+    let@ int b = a
+    inc(b)
+    # free b
+
+which feels like a workaround, rather than a sefety conveniency.
+
+We could also make pointers completely immutable... make stack pointers nullify on exit, and
+keep heap pointers? So no matter which one you return, you will either get a valid pointer, or
+a NULL pointer, since it is statically decided.
+
+But then you're fucked if you want to, well, mutate the pointer.
+
+Maybe allow for mutation, but forbid mixing stack and heap pointers? So like
+
+    let int a = 5
+    let int b = 3
+    let@ int ah = 5
+    let@ int bh = 3
+
+    let int ap = @a
+    mut ap = @b # Ok
+    mut ah = bh # Ok
+    mut ap = ah # Compile error?
+    mut ah = ap # Compile error?
+
