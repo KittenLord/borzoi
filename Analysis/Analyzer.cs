@@ -359,15 +359,15 @@ public class Analyzer
             }
             else if(line is MutNode mut)
             {
-                mut.Var = new(mut.NameT, mut.Name);
+                // var id = GetRelevantId(mut.Var, prefix);
+                // if(id is null) return false;
 
-                var id = GetRelevantId(mut.Var, prefix);
-                if(id is null) return false;
+                var destType = FigureOutTheTypeOfAExpr(prefix, mut.Var, VType.Invalid);
+                var type = FigureOutTheTypeOfAExpr(prefix, mut.Expr, destType);
 
-                var type = FigureOutTheTypeOfAExpr(prefix, mut.Expr, id.Type);
-                if(id.Type != type) 
+                if(destType != type) 
                 {
-                    Report(Error.TypeMismatch(id.Type, type, mut.Origin));
+                    Report(Error.TypeMismatch(destType, type, mut.Origin));
                     return false;
                 }
             }

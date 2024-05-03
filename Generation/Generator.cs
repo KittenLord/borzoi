@@ -191,7 +191,7 @@ ret
             {
                 var isArg = fn.ArgsInternal.Contains(varl.WorkingName);
                 var index = isArg 
-                    ? (fn.ArgsInternal.IndexOf(varl.WorkingName) + 2) * Settings.Bytes
+                    ? (fn.ArgsInternal.IndexOf(varl.WorkingName) + 1) * Settings.Bytes
                     : (fn.VarsInternal.IndexOf(varl.WorkingName) + 1) * Settings.Bytes;
                 if(isArg)
                     result += $"push QWORD[rbp+{index}]\n";
@@ -200,17 +200,16 @@ ret
             }
             else if(varl.Accessors.First() is FuncAcc func)
             {
+                result += "push rbp\n";
                 var label = varl.WorkingName;
                 var args = new List<IExpr>(func.Args);
                 args.Reverse();
                 foreach(var arg in args)
                     { result += GenerateExpr(fn, arg); } 
-                result += "push rbp\n";
                 result += $"call {label}\n";
                 result += "mov rsp, rbp\n";
-                result += $"add rsp, {Settings.Bytes}\n";
+                result += $"add rsp, {Settings.Bytes * (args.Count + 1)}\n";
                 result += "pop rbp\n";
-                result += $"add rsp, {Settings.Bytes * args.Count}\n";
                 result += "push rax\n";
             }
 

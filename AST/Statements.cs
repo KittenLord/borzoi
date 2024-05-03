@@ -10,21 +10,18 @@ public interface IStatement
 
 public class MutNode : IStatement
 {
-    public string Name => NameT.Value;
-
-    public Var Var;
     public Token Origin;
-    public Token NameT;
+    public Var Var;
     public IExpr Expr;
 
-    public MutNode(Token origin, Token name, IExpr expr)
+    public MutNode(Token origin, Var varn, IExpr expr)
     {
         Origin = origin;
-        NameT = name;
+        Var = varn;
         Expr = expr;
     }
 
-    public override string ToString() { return $"MUT {Name}\n{Expr.ToString()?.Indent()}"; }
+    public override string ToString() { return $"MUT {Var}\n{Expr.ToString()?.Indent()}"; }
 }
 
 public class IfNode : IStatement, IContainer

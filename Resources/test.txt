@@ -1,5 +1,9 @@
-fn main() {
-    let int[] aboba = []
-    let int[]@ arr = @aboba
-    let int el = arr@[0]
+fn main() int {
+    let int n = 10
+    ret fibonacci(n)
+}
+
+fn fibonacci(int n) int {
+    if n <= 1 { ret 1 }
+    ret fibonacci(n - 1) + fibonacci(n - 2)
 }

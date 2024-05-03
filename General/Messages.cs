@@ -20,6 +20,11 @@ namespace EdComp.Parsing.Msg
         new Message(
             $"Expected token of type {string.Join(" | ", expected)}. Found: {found.Type}",
             found);
+
+        public static Message MutDestinationAcc(Token pos) =>
+        new Message(
+            $"Destination of mut must be a variable, an array, a member or a pointer",
+            pos);
     }
 }
 
@@ -104,5 +109,10 @@ namespace EdComp.Analysis.Msg
         new Message(
             $"Cannot use a variable-sized array as a fixed-sized one",
             pos);
+        //
+        // public static Message InvalidMutDest(Token pos) =>
+        // new Message(
+        //     $"Cannot use a variable-sized array as a fixed-sized one",
+        //     pos);
     }
 }

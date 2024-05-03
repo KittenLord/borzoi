@@ -212,7 +212,17 @@ public class Parser
         if(!Peek().Is(TokenType.Id)) 
         { Report(Error.Expected([TokenType.Id], Peek())); return null; }
 
-        var name = Pop();
+        var name = ParseExpr();
+        if(name is null || name is not Var varn) { return null; }
+        if(varn.Accessors.Count > 0)
+        { 
+            var last = varn.Accessors.Last();
+            if(last is not ArrayAcc && last is not PointerAcc && last is not MemberAcc)
+            {
+                Report(Error.MutDestinationAcc(origin));
+                return null; 
+            }
+        }
 
         if(!Peek().Is(TokenType.Assign)) 
         { Report(Error.Expected([TokenType.Assign], Peek())); return null; }
@@ -221,7 +231,7 @@ public class Parser
         var expr = ParseExpr();
         if(expr is null) { return null; }
         
-        return new MutNode(origin, name, expr);
+        return new MutNode(origin, varn, expr);
     }
 
     private ReturnNode? ParseReturn()
