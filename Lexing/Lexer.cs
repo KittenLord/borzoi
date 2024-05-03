@@ -75,6 +75,8 @@ public class Lexer
         if(PeekPred(Eq('/'))) return Put(TokenType.Div, Popc());
         if(PeekPred(Eq('%'))) return Put(TokenType.Mod, Popc());
         if(PeekPred(Eq(','))) return Put(TokenType.Comma, Popc());
+        if(PeekPred(Eq('.'))) return Put(TokenType.Period, Popc());
+        if(PeekPred(Eq('@'))) return Put(TokenType.Pointer, Popc());
 
         if(PeekPred(Eq('('))) return Put(TokenType.LParen, Popc());
         if(PeekPred(Eq(')'))) return Put(TokenType.RParen, Popc());

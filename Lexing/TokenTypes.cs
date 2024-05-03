@@ -26,6 +26,8 @@ public enum TokenType
     Not, 
     Assign,
     Comma,
+    Period,
+    Pointer,
 
 
     Id,

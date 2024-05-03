@@ -109,7 +109,7 @@ public class Parser
     private VType? ParseType() 
     {
         var type = new VType(Pop().Value);
-        TokenType[] modlah = [TokenType.LBrack];
+        TokenType[] modlah = [TokenType.LBrack, TokenType.Pointer];
 
         while(modlah.Contains(Peek().Type))
         {
@@ -123,6 +123,11 @@ public class Parser
                 if(Peek().Is(TokenType.RBrack)) { Pop(); continue; }
                 Report(Error.Expected([TokenType.RBrack], Peek()));
                 return null;
+            }
+            else if(Peek().Is(TokenType.Pointer))
+            {
+                var origin = Pop();
+                type.Mods.Add(VTypeMod.Pointer());
             }
             else throw new System.Exception("AAAAAAAA");
         }
@@ -305,18 +310,32 @@ public class Parser
         };
     }
 
-    private static readonly TokenType[] leafTokens = [TokenType.IntLit, TokenType.BoolLit, TokenType.Id, TokenType.LParen, TokenType.LBrack, TokenType.Mul];
+    private static readonly TokenType[] leafTokens = [TokenType.IntLit, TokenType.BoolLit, TokenType.Id, TokenType.LParen, TokenType.LBrack, TokenType.Mul, TokenType.Pointer];
     private bool CanStartLeaf(TokenType t) => leafTokens.Contains(t);
     private IExpr? ParseExprLeaf()
     {
         if(!CanStartLeaf(Peek().Type)) throw new System.Exception("FUUUCK");
         if(Peek().Is(TokenType.IntLit)) return new IntLit(Pop().IntValue);
         if(Peek().Is(TokenType.BoolLit)) return new BoolLit(Pop().BoolValue);
+        if(Peek().Is(TokenType.Pointer))
+        {
+            var origin = Pop();
+            if(!Peek().Is(TokenType.Id))
+            {
+                Report(Error.Expected([TokenType.Id], Peek()));
+                return null;
+            }
+
+            var expr = ParseExpr();
+            if(expr is null) { return null; }
+
+            return new PointerOp(origin, expr);
+        }
         if(Peek().Is(TokenType.Id)) 
         {
             var varn = new Var(Peek(), Pop().Value);
 
-            TokenType[] acclah = [TokenType.LParen, TokenType.LBrack];
+            TokenType[] acclah = [TokenType.LParen, TokenType.LBrack, TokenType.Period, TokenType.Pointer];
             while(Peek().Is(acclah))
             {
                 if(Peek().Is(TokenType.LParen))
@@ -366,6 +385,21 @@ public class Parser
 
                     _ = Pop();
                     varn.Accessors.Add(new ArrayAcc(origin, index));
+                }
+                else if(Peek().Is(TokenType.Period))
+                {
+                    var origin = Pop();
+                    if(!Peek().Is(TokenType.Id))
+                    {
+                        Report(Error.Expected([TokenType.Id], Peek()));
+                        return null;
+                    }
+
+                    varn.Accessors.Add(new MemberAcc(origin, Pop()));
+                }
+                else if(Peek().Is(TokenType.Pointer))
+                {
+
                 }
             }
 

@@ -11,6 +11,7 @@ public interface VTypeMod
     public static VFunc Fn(IEnumerable<VType> args) => new VFunc() { Args = args.ToList() };
     public static VArray Arr() => new VArray();
     public static VArray Arr(int size) => new VArray(size);
+    public static VPointer Pointer() => new VPointer();
 }
 
 public class VFunc : VTypeMod 
@@ -38,6 +39,12 @@ public class VArray : VTypeMod
     public VArray(int size) { Fixed = true; Size = size; }
 }
 
+public class VPointer : VTypeMod
+{
+    public bool Same(VTypeMod other) => other is VPointer;
+    public VPointer() {}
+}
+
 // FUCK Equals() and GetHashCode(), all my homies FUCKING HATE Equals() and GetHashCode()
 public class VType
 {
@@ -48,6 +55,8 @@ public class VType
     public bool Valid;
     public string Name;
     public List<VTypeMod> Mods;
+
+    public void RemoveLastMod() => Mods.RemoveAt(Mods.Count - 1);
 
     public VType Copy() => Valid ? new (Name, new List<VTypeMod>(Mods)) : new();
     public static VType Invalid => new();
@@ -66,5 +75,10 @@ public class VType
 
     public override string ToString() { return (Name == "" ? "void" : Name) + string.Join("", Mods.Select(mod => mod switch { 
                 VFunc fn => $"({string.Join(", ", fn.Args)})", 
-                VArray arr => $"[{(arr.Fixed ? arr.Size.ToString() : "")}]" })); }
+                VArray arr => $"[{(arr.Fixed ? arr.Size.ToString() : "")}]",
+                VPointer ptr => $"@"})); }
+
+    public bool Is<T>() where T : VTypeMod => Mods.Count > 0 && Mods.Last() is T;
+    public bool Is<T>(out T mod) where T : VTypeMod 
+    { mod = (T)Mods.LastOrDefault(); return Mods.Count > 0 && Mods.Last() is T; }
 }

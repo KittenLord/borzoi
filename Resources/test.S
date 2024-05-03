@@ -13,9 +13,12 @@ mov rax, 1
 int 80h
 main:
 mov rbp, rsp
-sub rsp, 8
+sub rsp, 16
+push 5
 pop rax
 mov [rbp-8], rax
+pop rax
+mov [rbp-16], rax
 push 0
 pop rax
 push QWORD[rbp]

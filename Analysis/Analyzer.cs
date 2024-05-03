@@ -222,6 +222,16 @@ public class Analyzer
 
                     type.Mods.RemoveAt(0);
                 }
+                else if(accessor is PointerAcc ptrAcc)
+                {
+                    if(!type.Is<VPointer>()) 
+                    {
+                        Report(Error.CantAccess(accessor));
+                        return VType.Invalid;
+                    }
+
+                    type.Mods.RemoveAt(0);
+                }
                 else throw new System.Exception();
             }
             return type;
@@ -280,6 +290,17 @@ public class Analyzer
             var type = hint.Copy();
             arri.Type = type;
             return type;
+        }
+        if(expr is PointerOp ptrop)
+        {
+            var innerHint = hint.Copy();
+            if(!innerHint.Is<VPointer>()) innerHint = VType.Invalid;
+            else innerHint.RemoveLastMod();
+
+            var exprType = FigureOutTheTypeOfAExpr(prefix, ptrop.Expr, innerHint).Copy();
+            exprType.Mods.Add(VTypeMod.Pointer());
+
+            return exprType;
         }
         if(expr is BinopNode binop) 
         {

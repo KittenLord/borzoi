@@ -51,6 +51,33 @@ public class ArrayAcc : IAccessor
     public override string ToString() { return $"[$]\n{Index.ToString().Indent()}"; }
 }
 
+public class MemberAcc : IAccessor
+{
+    public string Label => "member";
+
+    public Token Origin;
+
+    public string Member => MemberT.Value;
+    public Token MemberT;
+
+    public MemberAcc(Token origin, Token member)
+    {
+        Origin = origin;
+        MemberT = member;
+    }
+
+    public override string ToString() { return $".${Member}"; }
+}
+
+public class PointerAcc : IAccessor
+{
+    public string Label => "pointer";
+
+    public Token Origin;
+    public PointerAcc(Token origin) { Origin = origin; }
+    public override string ToString() { return $"@$"; }
+}
+
 public class IntLit : IExpr
 {
     public VType Type { get; set; } = VType.Int;
@@ -85,6 +112,16 @@ public class ArrayInitOp : IExpr
 
     public ArrayInitOp(Token origin, IExpr expr) { Origin = origin; Expr = expr; }
     public override string ToString() { return $"[*]\n{Expr.ToString().Indent()}"; }
+}
+
+public class PointerOp : IExpr
+{
+    public VType? Type { get; set; }
+    public Token Origin;
+    public IExpr Expr;
+
+    public PointerOp(Token origin, IExpr expr) { Origin = origin; Expr = expr; }
+    public override string ToString() { return $"@\n{Expr.ToString().Indent()}"; }
 }
 
 public class BinopNode : IExpr
