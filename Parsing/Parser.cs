@@ -399,7 +399,8 @@ public class Parser
                 }
                 else if(Peek().Is(TokenType.Pointer))
                 {
-
+                    var origin = Pop();
+                    varn.Accessors.Add(new PointerAcc(origin));
                 }
             }
 

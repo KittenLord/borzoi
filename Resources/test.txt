@@ -1,5 +1,6 @@
 fn main() int {
     let int a = 5
     let int@ b = @a
+    mut a = b@
     ret 0
 }
