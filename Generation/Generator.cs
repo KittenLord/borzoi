@@ -16,31 +16,29 @@ public class Generator
     public string Generate(bool windows)
     {
         string result = 
-@$"BITS 64
-{(windows ? "extern ExitProcess" : "")}
-section .text
-global _start
-_start:
-mov rbp, rsp
-push rbp
-call main
-{(windows ? "mov rcx, rax\ncall ExitProcess" : "")}
-mov rbx, rax
-mov rax, 1
-int 80h
-";
+        "BITS 64\n" +
+        (windows ? "extern ExitProcess\n" : "") +
+        "section .text\n" +
+        "global _start\n" +
+        "_start:\n" +
+        "mov rbp, rsp\n" +
+        "push rbp\n" +
+        "call main\n" +
+        (windows ? "mov rcx, rax\ncall ExitProcess\n" : "") +
+        "mov rbx, rax\n" +
+        "mov rax, 1\n" +
+        "int 80h\n";
 
         foreach(var fn in AST.Fndefs)
         {
             string fnBoilerplate = 
-@$"{fn.Name}:
-mov rbp, rsp
-sub rsp, {Settings.Bytes * fn.VarsInternal.Count}
-{{0}}
-mov rax, 0
-push QWORD[rbp]
-ret
-";
+            $"{fn.Name}:\n" +
+            "mov rbp, rsp\n" +
+            $"sub rsp, {Settings.Bytes * fn.VarsInternal.Count}\n" +
+            "{0}" +
+            "mov rax, 0\n" +
+            "push QWORD[rbp]\n" +
+            "ret\n";
 
             string fnCode = GenerateBlock(fn, fn.Block);
 
@@ -216,6 +214,7 @@ ret
 
             foreach(var accessor in varl.Accessors)
             {
+                // TODO: Array/pointer stuff here
                 if(accessor is PointerAcc)
                 {
                     result += $"pop rax\n";
@@ -224,7 +223,6 @@ ret
                 }
             }
 
-            // TODO: Array/pointer stuff here
         }
         else if(expr is PointerOp ptr)
         {

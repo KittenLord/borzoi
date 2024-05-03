@@ -207,7 +207,6 @@ public class Parser
         var expr = ParseExpr();
         if(expr is null) { return null; }
         
-        // TODO: Type mods
         return new LetNode(origin, type, name, expr);
     }
 

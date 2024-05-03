@@ -63,7 +63,6 @@ push rax
 pop rax
 push QWORD[rbp]
 ret
-
 mov rax, 0
 push QWORD[rbp]
 ret
@@ -79,7 +78,6 @@ mov rsp, rbp
 add rsp, 16
 pop rbp
 push rax
-
 mov rax, 0
 push QWORD[rbp]
 ret
@@ -95,7 +93,6 @@ mov rsp, rbp
 add rsp, 16
 pop rbp
 push rax
-
 mov rax, 0
 push QWORD[rbp]
 ret
@@ -112,7 +109,6 @@ push 68
 pop rax
 pop rbx
 mov [rbx], rax
-
 mov rax, 0
 push QWORD[rbp]
 ret

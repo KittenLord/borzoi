@@ -67,3 +67,24 @@ Maybe allow for mutation, but forbid mixing stack and heap pointers? So like
     mut ap = ah # Compile error?
     mut ah = ap # Compile error?
 
+In the end I decided to do it the C way, because fuck all that nerd shit. Through maybe I can add 
+immutable argument passing to functions, I don't think it's all that difficult (clueless)
+
+Though now, with pointers out of the way, I have an even more pressing problem - how the hell do I do
+the arrays? Arrays will be wide pointers, that's for sure, but how is that implemented? I don't really
+want to handle pushing the 128-bit value to the stack lol
+
+So I guess it'll simply be double dereferencing (pointer -> (length, pointer) -> array), which I'm not
+really sure is the greatest approach, but I can't think of anything better.
+
+If it is not clear why I'm doubtful - the array itself, obviously, will be allocated by C malloc, but
+I don't know how to handle the (length, pointer) tuple - also malloc or what?
+
+This also kinda goes into the problem of differently sized types... 
+
+I probably should just for variables to take up more than 64 bits on the stack each, but that'll take work.
+I could also make this work with arrays, which is great ([rax + offset * size])
+
+But I also *definitely* need to handle less than 64-bit values, so that I'll have at least a change at
+using C strings. On the stack they'll pretty much take up the entire 64-bits, but in the array they'll
+need to be compressed
