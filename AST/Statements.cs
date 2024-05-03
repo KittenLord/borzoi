@@ -87,6 +87,15 @@ public class LetNode : IStatement
     public override string ToString() { return $"LET {Name} :: {Type}\n{Expr.ToString()?.Indent()}"; }
 }
 
+public class CallNode : IStatement
+{
+    public Token Origin;
+    public IExpr Expr;
+
+    public CallNode(Token origin, IExpr expr) { Origin = origin; Expr = expr; }
+    public override string ToString() { return $"CALL\n{Expr.ToString().Indent()}"; }
+}
+
 public class ReturnNode : IStatement
 {
     public Token Origin;

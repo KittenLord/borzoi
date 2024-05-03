@@ -243,19 +243,27 @@ public class Analyzer
             // Infer type of an empty array
             if(arr.Elems.Count <= 0 && 
                hint != VType.Invalid &&
-               hint.Mods.Count > 0 &&
-               hint.Mods.Last() is VArray)
+               hint.Is<VArray>())
                 return hint.Copy();
 
             // Not enough information to infer the type from
             if(arr.Elems.Count <= 0)
-                { return VType.Invalid; }
+            { 
+                if(!hint.Valid)
+                {
+                    return VType.Invalid; 
+                }
+
+                hint = hint.Copy();
+                hint.Mods.Add(VTypeMod.Arr());
+                return hint;
+            }
 
             var elemHint = VType.Invalid;
-            if(hint.Mods.Count > 0 && hint.Mods.Last() is VArray)
+            if(hint.Is<VArray>())
             {
                 elemHint = hint.Copy();
-                elemHint.Mods.RemoveAt(elemHint.Mods.Count - 1);
+                elemHint.RemoveLastMod();
             }
 
             var types = arr.Elems.Select(elem => FigureOutTheTypeOfAExpr(prefix, elem, elemHint));
@@ -293,12 +301,13 @@ public class Analyzer
         }
         if(expr is PointerOp ptrop)
         {
-            var innerHint = hint.Copy();
-            if(!innerHint.Is<VPointer>()) innerHint = VType.Invalid;
-            else innerHint.RemoveLastMod();
+            var innerHint = hint?.Copy() ?? VType.Invalid;
+            if(innerHint.Is<VPointer>()) innerHint.RemoveLastMod();
 
             var exprType = FigureOutTheTypeOfAExpr(prefix, ptrop.Expr, innerHint).Copy();
             exprType.Mods.Add(VTypeMod.Pointer());
+
+            ptrop.Type = exprType;
 
             return exprType;
         }
@@ -356,6 +365,10 @@ public class Analyzer
                 var id = new Identifier(let.Name, wname, let.Type, let.Origin);
                 fn.VarsInternal.Add(wname);
                 Identifiers.Add(id);
+            }
+            else if(line is CallNode call)
+            {
+                FigureOutTheTypeOfAExpr(prefix, call.Expr, VType.Invalid);
             }
             else if(line is MutNode mut)
             {

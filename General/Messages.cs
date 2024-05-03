@@ -25,6 +25,11 @@ namespace EdComp.Parsing.Msg
         new Message(
             $"Destination of mut must be a variable, an array, a member or a pointer",
             pos);
+
+        public static Message InvalidPointerTarget(Token pos) =>
+        new Message(
+            $"You can only point to a place in memory, not to an evaluated expression",
+            pos);
     }
 }
 

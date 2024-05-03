@@ -68,15 +68,15 @@ ret
                 fnCode += expr;
                 fnCode += $"pop rax\nmov [rbp-{varIndex}], rax\n";
             }
+            else if(line is CallNode call)
+            {
+                fnCode += GenerateExpr(fn, call.Expr);
+            }
             else if(line is MutNode mut)
             {
-                // TODO: Allow to change arguments aswell
-                var varIndex = fn.VarsInternal.IndexOf(mut.Var.WorkingName);
-                varIndex = (varIndex + 1) * Settings.Bytes;
-
-                var expr = GenerateExpr(fn, mut.Expr);
-                fnCode += expr;
-                fnCode += $"pop rax\nmov [rbp-{varIndex}], rax\n";
+                fnCode += GenerateExprAddress(fn, mut.Var);
+                fnCode += GenerateExpr(fn, mut.Expr);
+                fnCode += $"pop rax\npop rbx\nmov [rbx], rax\n";
             }
             else if(line is ReturnNode ret)
             {
@@ -187,6 +187,7 @@ ret
         }
         else if(expr is Var varl)
         {
+            // TODO: I'm almost sure that I fucked up accessors' order here
             if(varl.Accessors.Count == 0 || varl.Accessors.First() is not FuncAcc)
             {
                 var isArg = fn.ArgsInternal.Contains(varl.WorkingName);
@@ -213,9 +214,53 @@ ret
                 result += "push rax\n";
             }
 
+            foreach(var accessor in varl.Accessors)
+            {
+                if(accessor is PointerAcc)
+                {
+                    result += $"pop rax\n";
+                    result += $"mov rax, [rax]\n";
+                    result += $"push rax\n";
+                }
+            }
+
             // TODO: Array/pointer stuff here
         }
+        else if(expr is PointerOp ptr)
+        {
+            // This is guaranteed by the parser
+            // After parsing @ unary operator, only accepted next symbol is Id
+            result += GenerateExprAddress(fn, ptr.Expr as Var);
+        }
 
-         return result;
+        return result;
+    }
+
+    private string GenerateExprAddress(FndefNode fn, Var expr)
+    {
+        string result = "";
+        var wname = expr.WorkingName;
+
+        var isArg = fn.ArgsInternal.Contains(wname);
+        var index = isArg 
+            ? (fn.ArgsInternal.IndexOf(wname) + 1) * Settings.Bytes
+            : (fn.VarsInternal.IndexOf(wname) + 1) * Settings.Bytes;
+        var op = isArg ? "add" : "sub"; // arg is above rbp, var is below
+        result += $"mov rax, rbp\n";
+        result += $"{op} rax, {index}\n";
+
+        foreach(var accessor in expr.Accessors)
+        {
+            var isLast = expr.Accessors.Last() == accessor;
+            if(accessor is PointerAcc ptrAcc)
+            {
+                //if(isLast) { continue; }
+                result += $"mov rax, [rax]\n";
+            }
+            else throw new System.Exception("SHIIIT");
+        }
+
+        result += $"push rax\n";
+        return result;
     }
 }

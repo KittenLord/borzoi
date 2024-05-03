@@ -148,6 +148,12 @@ public class Parser
                 if(let is null) { return null; }
                 statements.Add(let);
             }
+            else if(Peek().Is(TokenType.Call))
+            {
+                var call = ParseCall();
+                if(call is null) { return null; }
+                statements.Add(call);
+            }
             else if(Peek().Is(TokenType.Mut))
             {
                 var mut = ParseMut();
@@ -205,6 +211,19 @@ public class Parser
         return new LetNode(origin, type, name, expr);
     }
 
+    private CallNode? ParseCall()
+    {
+        var origin = Pop();
+
+        if(!CanStartLeaf(Peek().Type))
+        { Report(Error.Expected(leafTokens, Peek())); return null; }
+
+        var expr = ParseExpr();
+        if(expr is null) { return null; }
+
+        return new CallNode(origin, expr);
+    }
+
     private MutNode? ParseMut()
     {
         var origin = Pop();
@@ -212,6 +231,7 @@ public class Parser
         if(!Peek().Is(TokenType.Id)) 
         { Report(Error.Expected([TokenType.Id], Peek())); return null; }
 
+        // TODO: Report error?
         var name = ParseExpr();
         if(name is null || name is not Var varn) { return null; }
         if(varn.Accessors.Count > 0)
@@ -332,12 +352,17 @@ public class Parser
             var origin = Pop();
             if(!Peek().Is(TokenType.Id))
             {
-                Report(Error.Expected([TokenType.Id], Peek()));
+                Report(Error.InvalidPointerTarget(origin));
                 return null;
             }
 
-            var expr = ParseExpr();
+            var expr = ParseExprLeaf() as Var;
             if(expr is null) { return null; }
+            if(expr.Accessors.Count > 0 && expr.Accessors.Last() is FuncAcc)
+            {
+                Report(Error.InvalidPointerTarget(origin));
+                return null;
+            }
 
             return new PointerOp(origin, expr);
         }

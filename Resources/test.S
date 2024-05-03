@@ -13,16 +13,52 @@ mov rax, 1
 int 80h
 main:
 mov rbp, rsp
-sub rsp, 8
-push 10
+sub rsp, 40
+push 5
 pop rax
 mov [rbp-8], rax
 push rbp
-push QWORD[rbp-8]
-call fibonacci
+mov rax, rbp
+sub rax, 8
+push rax
+call _1
 mov rsp, rbp
 add rsp, 16
 pop rbp
+push rax
+push 100
+pop rax
+mov [rbp-16], rax
+mov rax, rbp
+sub rax, 16
+push rax
+pop rax
+mov [rbp-24], rax
+mov rax, rbp
+sub rax, 24
+push rax
+pop rax
+mov [rbp-32], rax
+mov rax, rbp
+sub rax, 32
+push rax
+pop rax
+mov [rbp-40], rax
+mov rax, rbp
+sub rax, 40
+mov rax, [rax]
+mov rax, [rax]
+mov rax, [rax]
+push rax
+push 1
+pop rax
+pop rbx
+mov [rbx], rax
+push QWORD[rbp-8]
+push QWORD[rbp-16]
+pop rbx
+pop rax
+add rax, rbx
 push rax
 pop rax
 push QWORD[rbp]
@@ -31,60 +67,51 @@ ret
 mov rax, 0
 push QWORD[rbp]
 ret
-fibonacci:
+_1:
 mov rbp, rsp
 sub rsp, 0
-push QWORD[rbp+8]
-push 1
-pop rbx
-pop rax
-cmp rax, rbx
-mov rax, 1
-jle _temp$$$2
+push rbp
+mov rax, rbp
+add rax, 8
+push rax
+call _2
+mov rsp, rbp
+add rsp, 16
+pop rbp
+push rax
+
 mov rax, 0
-_temp$$$2:
-push rax
-pop rax
-cmp rax, 1
-jne _else$$$1
-push 1
-pop rax
 push QWORD[rbp]
 ret
-jmp _endif$$$0
-_else$$$1:
-_endif$$$0:
+_2:
+mov rbp, rsp
+sub rsp, 0
 push rbp
-push QWORD[rbp+8]
-push 1
-pop rbx
-pop rax
-sub rax, rbx
+mov rax, rbp
+add rax, 8
 push rax
-call fibonacci
+call _3
 mov rsp, rbp
 add rsp, 16
 pop rbp
 push rax
-push rbp
-push QWORD[rbp+8]
-push 2
-pop rbx
-pop rax
-sub rax, rbx
-push rax
-call fibonacci
-mov rsp, rbp
-add rsp, 16
-pop rbp
-push rax
-pop rbx
-pop rax
-add rax, rbx
-push rax
-pop rax
+
+mov rax, 0
 push QWORD[rbp]
 ret
+_3:
+mov rbp, rsp
+sub rsp, 0
+mov rax, rbp
+add rax, 8
+mov rax, [rax]
+mov rax, [rax]
+mov rax, [rax]
+push rax
+push 68
+pop rax
+pop rbx
+mov [rbx], rax
 
 mov rax, 0
 push QWORD[rbp]
