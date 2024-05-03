@@ -85,9 +85,9 @@ namespace EdComp.Analysis.Msg
             $"The program does not contain a \"main\" function",
             new Token(TokenType.Illegal, "", 0, 0, 0));
 
-        public static Message CantAccess(EdComp.ASTn.IAccessor access) =>
+        public static Message CantAccess(VType type, EdComp.ASTn.IAccessor access) =>
         new Message(
-            $"Can't access value using {access} access",
+            $"Can't access value of type {type} using {access.Label} access",
             new Token(TokenType.Illegal, "", 0, 0, 0));
 
         public static Message FnCallArgsCount(int expected, int actual) =>

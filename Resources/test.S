@@ -13,19 +13,14 @@ mov rax, 1
 int 80h
 main:
 mov rbp, rsp
-sub rsp, 16
-push 5
+sub rsp, 24
 pop rax
 mov [rbp-8], rax
 pop rax
 mov [rbp-16], rax
 push QWORD[rbp-16]
 pop rax
-mov [rbp-8], rax
-push 0
-pop rax
-push QWORD[rbp]
-ret
+mov [rbp-24], rax
 
 mov rax, 0
 push QWORD[rbp]

@@ -175,15 +175,15 @@ public class Analyzer
             {
                 if(type.Mods.Count <= 0) 
                 {
-                    Report(Error.CantAccess(accessor));
+                    Report(Error.CantAccess(type, accessor));
                     return VType.Invalid;
                 }
 
                 if(accessor is FuncAcc func)
                 {
-                    if(type.Mods[0] is not VFunc funcProto)
+                    if(!type.Is<VFunc>(out var funcProto))
                     {
-                        Report(Error.CantAccess(accessor));
+                        Report(Error.CantAccess(type, accessor));
                         return VType.Invalid;
                     }
 
@@ -203,13 +203,13 @@ public class Analyzer
                         }
                     }
 
-                    type.Mods.RemoveAt(0);
+                    type.RemoveLastMod();
                 }
                 else if(accessor is ArrayAcc arrAcc)
                 {
-                    if(type.Mods[0] is not VArray arrProto)
+                    if(!type.Is<VArray>(out var arrProto))
                     {
-                        Report(Error.CantAccess(accessor));
+                        Report(Error.CantAccess(type, accessor));
                         return VType.Invalid;
                     }
 
@@ -220,17 +220,17 @@ public class Analyzer
                         return VType.Invalid;
                     }
 
-                    type.Mods.RemoveAt(0);
+                    type.RemoveLastMod();
                 }
                 else if(accessor is PointerAcc ptrAcc)
                 {
                     if(!type.Is<VPointer>()) 
                     {
-                        Report(Error.CantAccess(accessor));
+                        Report(Error.CantAccess(type, accessor));
                         return VType.Invalid;
                     }
 
-                    type.Mods.RemoveAt(0);
+                    type.RemoveLastMod();
                 }
                 else throw new System.Exception();
             }

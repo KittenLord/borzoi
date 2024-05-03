@@ -1,6 +1,5 @@
-fn main() int {
-    let int a = 5
-    let int@ b = @a
-    mut a = b@
-    ret 0
+fn main() {
+    let int[] aboba = []
+    let int[]@ arr = @aboba
+    let int el = arr@[0]
 }
