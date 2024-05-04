@@ -88,3 +88,84 @@ I could also make this work with arrays, which is great ([rax + offset * size])
 But I also *definitely* need to handle less than 64-bit values, so that I'll have at least a change at
 using C strings. On the stack they'll pretty much take up the entire 64-bits, but in the array they'll
 need to be compressed
+
+So yeah, I'll probably do that and even go kinda further - allow for init/readonly fields, since that is
+necessary for the arrays to work properly (imagine you could set the array's length lol). Pretty much it
+forbids you from assigning to the field directly, and from creating a pointer to it, leaving you no way
+to do your dirty deeds. This, of course, gets destroyed by reinterpret casting (when I hopefully add it),
+but who cares, at least you'll have to fuck around to mess up your array.
+
+After that, I suppose, it won't be that hard to get basic structs working. Then I add the ability to create
+C mappings and everyone will be happy!
+
+Also, one more pressing moment - so I've decided how to create the arrays, but not on how to destroy (free)
+them. Currently I have the following idea:
+
+    let int x = 5 # Just stack allocation, nothing interesting
+    let@ int x = 5 # Heap allocation, doesn't get automatically freed, also x is int@ despite how it looks
+    let int[] xs = [] # Heap allocation, gets freed at the end of the block
+    let@ int[] xs = [] # Heap allocation, doesn't get freed, and unlike int, it is still an int[], not an int[]@
+
+This is cool and all - I would need to create some defer-like functionality (might add it regardless, it is
+quite useful), but what if we do smth like this:
+    
+    let int[][] x = [[1, 2], [3, 4]]
+    let@ int[][] x = [[1, 2], [3, 4], [5, 6]]
+
+The latter one is obvious, we just don't bother. The first one is more difficult - do we deallocate the inner
+arrays, and if we do, how do we recursively retrieve them? What if it is actually an array of objects, which
+have initialized arrays inside of them?
+
+We could go about it like this:
+
+    let int[][] x = [%[1, 2], %[3, 4], %[5, 6]]
+
+But I dunnnooooo, seems kinda sussy
+
+Probably what we should do, is to only care about nested arrays, and not about the nested objects, for which
+there will be smth different, for example
+
+    let obj[] xs = [#obj{ x = [] }]
+    let obj[] xs = [#obj{ @x = [] }]
+
+kinda imitating the let/let@ thing (obj constructor syntax is purely speculative for now)
+
+Though, still, the fuck do we do in a situation like this:
+
+    call someCoolFunction([1, 2, 3])
+
+The array in this example is obviously "stack" allocated, but what if we want it to be heap allocated?
+
+I mean, we could also simply not bother and require the user to free all of their stuff, but idk, I don't
+like how it feels... A lot of the times you need temp arrays for smth quick, and freeing them like that looks
+uncool
+
+Since we allow the pointer operator only for Id lookahead, we are allowed to do something like this:
+
+    let int[][] = [[1, 2], [3, 4]] # Recursively checked for freeing
+    let@ int[][] = [[1, 2], [3, 4]] # Recursively not given a shit about
+    call someFunction([1, 2, 3]) # Recursively checked for freeing
+    call someFunction(@[1, 2, 3]) # Same as let@
+
+This does allow for some repeating, from the example above these
+
+    let obj[] xs = [#obj{ @x = [] }]
+    let obj[] xs = [#obj{ x = @[] }]
+
+would be equivalent... maybe it makes sense then to not include the first variant of the syntax
+
+Also, there is a question of mixed cases... You probably can do something like this:
+
+    [@[1, 2], @[3, 4]]
+
+but I don't want to go any deeper that way, especially not specifying the "don't free the outer one, but
+free the inner one" stuff - that's just ridiculous, if you want that just do it yourself
+
+So I guess I'm settled on this syntax (unless I change my mind after sleeping, it's 3AM lol)
+
+    let int[][] = [[1, 2], [3, 4]] # Free the arrays at the end of the block
+    let@ int[][] = [[1, 2], [3, 4]] # Don't do anything to them
+    let int[][] = [@[1, 2], @[3, 4]] # Free all arrays not marked with @
+    call someFunction(@[[1, 2], [3, 4]]) # The previous one is probably recursive
+
+And if you want smth else just do it in a loop
