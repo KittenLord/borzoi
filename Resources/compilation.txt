@@ -169,3 +169,20 @@ So I guess I'm settled on this syntax (unless I change my mind after sleeping, i
     call someFunction(@[[1, 2], [3, 4]]) # The previous one is probably recursive
 
 And if you want smth else just do it in a loop
+
+It just occurred to me... How do we keep track of what to deallocate? We can free the variables, but
+what about recursive frees, or arrays that you've lost the pointer to?
+
+This is actually tough... We need to keep track of our allocations after point X (after block start) and
+deallocate everything at the end of the block. We could do that by having a separate stack of pointers,
+push NULL on block enter, and at block exit push until NULL, but where do we store this other stack? Do we
+just implement vector in asm at this point? 
+
+Also an important note - this stack must keep pointers to pointers, so that it will automatically set them
+to null in case some dum dum tries to return that (though this also poses some problems, i.e. reassignment)
+
+I've thought about it more - perhaps fuck the pointers to pointers thing, since it will be an even bigger pain
+in the ass to store them I think
+
+Even more thinking after - let@ should work the same with arrays, and @[] will be used to protect it from
+"gc". It just makes the syntax more consistent
