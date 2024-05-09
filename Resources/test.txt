@@ -1,15 +1,7 @@
 fn main() int {
-    let int power = 11
-    let int n = 2
-
-    let int nc = n
-
-    if power == 0 { ret 1 }
-
-    while power > 1 {
-        mut n = n * nc
-        mut power = power - 1
-    }
-
-    ret n
+    let int[] a = []
+    let int[2] b = [1, 2]
+    let int[3] c = [1, 2, 3]
+    let int[] d = *8
+    ret b[0]
 }

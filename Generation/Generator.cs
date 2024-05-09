@@ -18,6 +18,7 @@ public class Generator
         string result = 
         "BITS 64\n" +
         (windows ? "extern ExitProcess\n" : "") +
+        "extern malloc\n" + // We ball
         "section .text\n" +
         "global _start\n" +
         "_start:\n" +
@@ -305,6 +306,11 @@ public class Generator
             result += GenerateExprAddress(fn, ptr.Expr as Var);
             result += $"sub rsp, 16\nmov [rsp], rax\n";
         }
+        else if(expr is ArrayLit arr)
+        {
+            // TODO: ARRAYS AYYYYY
+        }
+        else throw new System.Exception(expr.GetType().ToString());
 
         return result;
     }
@@ -312,7 +318,6 @@ public class Generator
     // STORES ADDRESS IN RAX
     private string GenerateExprAddress(FndefNode fn, Var expr)
     {
-        // TODO: apparently "lea" instruction does exactly what I need
         string result = "";
 
         var wname = expr.WorkingName;
