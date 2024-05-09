@@ -1,11 +1,15 @@
 fn main() int {
-    let int n = 4
-    ret factorial(n)
-}
+    let int power = 11
+    let int n = 2
 
-fn factorial(int n) int {
-    if n == 0 { ret 1 }
-    if n == 1 { ret 1 }
-    ret factorial(n - 1) * n
-}
+    let int nc = n
 
+    if power == 0 { ret 1 }
+
+    while power > 1 {
+        mut n = n * nc
+        mut power = power - 1
+    }
+
+    ret n
+}

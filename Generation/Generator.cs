@@ -172,19 +172,17 @@ public class Generator
                 var doLabel = GetLabel("do");
 
                 var condition = GenerateExpr(fn, wh.Condition);
+                condition += $"mov rax, [rsp]\n";
+                condition += $"add rsp, 16\n";
+                condition += $"and rax, 1\n";
+                condition += $"cmp rax, 1\n";
+                condition += $"jne {endLabel}\n";
+
+                var blockCode = GenerateBlock(fn, wh.Block);
 
                 fnCode += $"{doLabel}:\n";
-                if(!wh.Do)
-                {
-                    fnCode += condition;
-                    fnCode += $"pop rax\ncmp rax, 1\njne {endLabel}\n";
-                }
-                fnCode += GenerateBlock(fn, wh.Block);
-                if(wh.Do)
-                {
-                    fnCode += condition;
-                    fnCode += $"pop rax\ncmp rax, 1\njne {endLabel}\n";
-                }
+                if(!wh.Do) { fnCode += condition + blockCode; }
+                else       { fnCode += blockCode + condition; }
                 fnCode += $"jmp {doLabel}\n";
                 fnCode += $"{endLabel}:\n";
             }
