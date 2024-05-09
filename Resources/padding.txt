@@ -1,0 +1,18 @@
+Holy fuck the padding's going to be tough, gonna write everything down here to teach myself
+
+So if my experimentations with the C compiler were done correctly, I have these results:
+
+Each type has ALIGNMENT and SIZE. For basic types, ALIGNMENT == SIZE
+
+Calculating composite type's ALIGNMENT is easy - it is the max ALIGNMENT of it's parts, which
+can done recursively/assigned previously
+
+We then calculate the members' positions. If current index is divisible by the ALIGNMENT of the
+element, we set the member's position and increment the current index by SIZE. If current index
+isn't divisible (btw 0 is always divisible), we increment until it is and proceed.
+
+After we've calculated the positions, we check the current index, and increment it until it will
+be divisible by the ALIGNMENT of the whole struct. The then assign the index to the SIZE of this
+struct. We're done.
+
+After reading System-V ABI, I think I got this right

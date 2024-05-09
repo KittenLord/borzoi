@@ -21,23 +21,61 @@ public class Generator
         "section .text\n" +
         "global _start\n" +
         "_start:\n" +
+        "and rsp, -16\n" +
         "mov rbp, rsp\n" +
-        "push rbp\n" +
+        "sub rsp, 32\n" + // Why not
         "call main\n" +
-        (windows ? "mov rcx, rax\ncall ExitProcess\n" : "") +
+        (windows ? "mov rcx, [rsp]\ncall ExitProcess\n" : "") +
         "mov rbx, rax\n" +
         "mov rax, 1\n" +
         "int 80h\n";
+
+        // Preparations
+        foreach(var fn in AST.Fndefs)
+        {
+            int offset = 0;
+            for(int i = 0; i < fn.VarsInternal.Count; i++)
+            {
+                var vari = fn.VarsInternal[i];
+                var info = vari.Type.GetInfo(AST.TypeInfos);
+
+                offset = offset.Pad(info.Alignment);
+                offset += info.ByteSize;
+
+                vari.Offset = offset;
+            }
+
+            // Enforce bit alignment
+            fn.StackSize = offset.Pad(16);
+
+            offset = 0;
+            for(int i = 0; i < fn.ArgsInternal.Count; i++)
+            {
+                var arg = fn.ArgsInternal[i];
+                var info = arg.Type.GetInfo(AST.TypeInfos);
+
+                offset = offset.Pad(info.Alignment);
+                // while(offset % info.Alignment != 0) offset++;
+                arg.Offset = offset;
+
+                offset += info.ByteSize;
+            }
+
+            fn.ArgsSize = offset;
+            fn.ArgsPadSize = offset.Pad(16) - fn.ArgsSize;
+        }
 
         foreach(var fn in AST.Fndefs)
         {
             string fnBoilerplate = 
             $"{fn.Name}:\n" +
+            "push rbp\n" +
             "mov rbp, rsp\n" +
-            $"sub rsp, {Settings.Bytes * fn.VarsInternal.Count}\n" +
+            $"sub rsp, {fn.StackSize}\n" +
             "{0}" +
-            "mov rax, 0\n" +
-            "push QWORD[rbp]\n" +
+            // "push QWORD[rbp]\n" + // Long live my own approach, succumbed under the pressure of world's most used ABIs
+            "mov rsp, rbp\n" +
+            "pop rbp\n" + 
             "ret\n";
 
             string fnCode = GenerateBlock(fn, fn.Block);
@@ -55,48 +93,69 @@ public class Generator
     private string GenerateBlock(FndefNode fn, BlockNode block)
     {
         string fnCode = "";
+
         foreach(var line in block.Statements)
         {
             if(line is LetNode let)
             {
-                var varIndex = fn.VarsInternal.IndexOf(let.Var.WorkingName);
-                varIndex = (varIndex + 1) * Settings.Bytes;
+                var vari = fn.GetVar(let.Var.WorkingName);
+                var info = vari.Type.GetInfo(AST.TypeInfos);
 
-                var expr = GenerateExpr(fn, let.Expr);
-                fnCode += expr;
-                fnCode += $"pop rax\nmov [rbp-{varIndex}], rax\n";
+                fnCode += GenerateExpr(fn, let.Expr);
+
+                fnCode += $"lea rsi, [rsp]\n"; // source
+                fnCode += $"lea rdi, [rbp-{vari.Offset}]\n"; // destination
+                fnCode += $"mov rcx, {info.ByteSize}\n"; // length
+                fnCode += $"rep movsb\n"; // pretty much memcpy
+
+                fnCode += $"add rsp, {info.ByteSize.Pad(16)}\n";
             }
             else if(line is CallNode call)
             {
                 fnCode += GenerateExpr(fn, call.Expr);
+                fnCode += $"add rsp, {call.Expr.Type.GetInfo(AST.TypeInfos).ByteSize.Pad(16)}\n";
             }
             else if(line is MutNode mut)
             {
-                fnCode += GenerateExprAddress(fn, mut.Var);
+                var size = mut.Expr.Type.GetInfo(AST.TypeInfos).ByteSize;
                 fnCode += GenerateExpr(fn, mut.Expr);
-                fnCode += $"pop rax\npop rbx\nmov [rbx], rax\n";
+                fnCode += GenerateExprAddress(fn, mut.Var);
+                fnCode += $"lea rsi, [rsp]\n";
+                fnCode += $"mov rdi, rax\n";
+                fnCode += $"mov rcx, {size}\n";
+                fnCode += "rep movsb\n";
+                fnCode += $"add rsp, {size.Pad(16)}\n";
             }
             else if(line is ReturnNode ret)
             {
-                if(ret.Nothing) fnCode += "mov rax, 0\n";
-                else 
+                // if(ret.Nothing) fnCode += $"mov QWORD [{rbp+}], 0\n";
+                if(!ret.Nothing)
                 {
-                    var expr = GenerateExpr(fn, ret.Expr);
-                    fnCode += expr;
-                    fnCode += "pop rax\n";
+                    var returnAddress = 
+                        Settings.Bytes + Settings.Bytes + 
+                        fn.ArgsSize + fn.ArgsPadSize;
+
+                    fnCode += GenerateExpr(fn, ret.Expr);
+                    fnCode += $"lea rdi, [rbp+{returnAddress}]\n";
+                    fnCode += "lea rsi, [rsp]\n";
+                    fnCode += $"mov rcx, {fn.RetType.GetInfo(AST.TypeInfos).ByteSize}\n";
+                    fnCode += "rep movsb\n";
                 }
 
-                fnCode += "push QWORD[rbp]\nret\n";
+                fnCode += "mov rsp, rbp\n";
+                fnCode += "pop rbp\n";
+                fnCode += "ret\n";
             }
             else if(line is IfNode ifn)
             {
                 var endifLabel = GetLabel("endif");
                 var label = GetLabel("else");
-                var condition = GenerateExpr(fn, ifn.Condition);
 
-                fnCode += condition;
-                fnCode += $"pop rax\ncmp rax, 1\njne {label}\n";
+                fnCode += GenerateExpr(fn, ifn.Condition);
+                fnCode += $"mov rax, [rsp]\nadd rsp, 16\nand rax, 1\ncmp rax, 1\njne {label}\n";
+
                 fnCode += GenerateBlock(fn, ifn.Block);
+
                 fnCode += $"jmp {endifLabel}\n";
                 fnCode += $"{label}:\n";
 
@@ -144,14 +203,13 @@ public class Generator
         {
             result += GenerateExpr(fn, binop.Left);
             result += GenerateExpr(fn, binop.Right);
-            result += "pop rbx\n";
-            result += "pop rax\n";
 
-            // System.Console.WriteLine($"{expr}");
-            // System.Console.WriteLine($"{binop.LeftType is null}");
-            // System.Console.WriteLine($"{binop.RightType is null}");
             if(binop.LeftType == VType.Int && binop.RightType == VType.Int)
             {
+                result += $"mov rax, [rsp+16]\n";
+                result += $"mov rbx, [rsp]\n";
+                result += $"add rsp, 16\n";
+
                 var label = GetLabel();
                 result += binop.Operator.Type switch 
                 {
@@ -170,46 +228,64 @@ public class Generator
 
                     _ => throw new System.Exception()
                 };
+
+                result += $"mov [rsp], rax\n";
             }
             else throw new System.Exception();
-
-            result += "push rax\n";
         }
         else if(expr is IntLit intlit)
         {
-            result += $"push {intlit.Value}\n";
+            result += $"sub rsp, 16\nmov QWORD [rsp], {intlit.Value}\n";
         }
         else if(expr is BoolLit boolLit)
         {
-            result += $"push {(boolLit.Value ? 1 : 0)}\n"; // NOTE: perhaps 0xFFFF instead of 0x0001 ?
+            result += $"sub rsp, 16\nmov QWORD [rsp], {(boolLit.Value ? 1 : 0)}\n";
         }
         else if(expr is Var varl)
         {
             // TODO: I'm almost sure that I fucked up accessors' order here
             if(varl.Accessors.Count == 0 || varl.Accessors.First() is not FuncAcc)
             {
-                var isArg = fn.ArgsInternal.Contains(varl.WorkingName);
-                var index = isArg 
-                    ? (fn.ArgsInternal.IndexOf(varl.WorkingName) + 1) * Settings.Bytes
-                    : (fn.VarsInternal.IndexOf(varl.WorkingName) + 1) * Settings.Bytes;
-                if(isArg)
-                    result += $"push QWORD[rbp+{index}]\n";
-                else
-                    result += $"push QWORD[rbp-{index}]\n";
+                var isArg = fn.IsArg(varl.WorkingName, out var sv);
+                var info = sv.Type.GetInfo(AST.TypeInfos);
+                var index = isArg
+                    ? sv.Offset + Settings.Bytes * 2
+                    : sv.Offset;
+                var op = isArg ? "+" : "-";
+
+                result += $"sub rsp, {info.ByteSize.Pad(16)}\n";
+                result += $"lea rsi, [rbp{op}{index}]\n";
+                result += $"lea rdi, [rsp]\n";
+                result += $"mov rcx, {info.ByteSize}\n";
+                result += $"rep movsb\n";
             }
             else if(varl.Accessors.First() is FuncAcc func)
             {
-                result += "push rbp\n";
                 var label = varl.WorkingName;
+                var fnn = AST.Fndefs.Find(f => f.Name == varl.Name);
+                var retInfo = fnn.RetType.GetInfo(AST.TypeInfos);
+
+                result += $"sub rsp, {retInfo.ByteSize.Pad(16)}\n";
+                result += $"sub rsp, {fnn.ArgsPadSize + fnn.ArgsSize}\n";
+
                 var args = new List<IExpr>(func.Args);
-                args.Reverse();
-                foreach(var arg in args)
-                    { result += GenerateExpr(fn, arg); } 
+
+                for(int i = args.Count - 1; i >= 0; i--)
+                {
+                    var argExpr = args[i];
+                    var offset = fnn.ArgsInternal[i].Offset;
+                    var typeInfo = argExpr.Type.GetInfo(AST.TypeInfos);
+
+                    result += GenerateExpr(fn, argExpr);
+                    result += $"lea rdi, [rsp+{offset+typeInfo.ByteSize.Pad(16)}]\n";
+                    result += $"lea rsi, [rsp]\n";
+                    result += $"mov rcx, {typeInfo.ByteSize}\n";
+                    result += $"rep movsb\n";
+                    result += $"add rsp, {offset+typeInfo.ByteSize.Pad(16)}\n";
+                }
+
                 result += $"call {label}\n";
-                result += "mov rsp, rbp\n";
-                result += $"add rsp, {Settings.Bytes * (args.Count + 1)}\n";
-                result += "pop rbp\n";
-                result += "push rax\n";
+                result += $"add rsp, {fnn.ArgsPadSize + fnn.ArgsSize}\n";
             }
 
             foreach(var accessor in varl.Accessors)
@@ -229,23 +305,25 @@ public class Generator
             // This is guaranteed by the parser
             // After parsing @ unary operator, only accepted next symbol is Id
             result += GenerateExprAddress(fn, ptr.Expr as Var);
+            result += $"sub rsp, 16\nmov [rsp], rax\n";
         }
 
         return result;
     }
 
+    // STORES ADDRESS IN RAX
     private string GenerateExprAddress(FndefNode fn, Var expr)
     {
+        // TODO: apparently "lea" instruction does exactly what I need
         string result = "";
-        var wname = expr.WorkingName;
 
-        var isArg = fn.ArgsInternal.Contains(wname);
-        var index = isArg 
-            ? (fn.ArgsInternal.IndexOf(wname) + 1) * Settings.Bytes
-            : (fn.VarsInternal.IndexOf(wname) + 1) * Settings.Bytes;
-        var op = isArg ? "add" : "sub"; // arg is above rbp, var is below
-        result += $"mov rax, rbp\n";
-        result += $"{op} rax, {index}\n";
+        var wname = expr.WorkingName;
+        var isArg = fn.IsArg(wname, out var sv);
+        var index = isArg
+            ? sv.Offset + Settings.Bytes * 2
+            : sv.Offset;
+        var op = isArg ? "+" : "-";
+        result += $"lea rax, [rbp{op}{index}]\n";
 
         foreach(var accessor in expr.Accessors)
         {
@@ -258,7 +336,6 @@ public class Generator
             else throw new System.Exception("SHIIIT");
         }
 
-        result += $"push rax\n";
         return result;
     }
 }

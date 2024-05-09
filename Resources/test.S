@@ -3,112 +3,159 @@ extern ExitProcess
 section .text
 global _start
 _start:
+and rsp, -16
 mov rbp, rsp
-push rbp
+sub rsp, 32
 call main
-mov rcx, rax
+mov rcx, [rsp]
 call ExitProcess
 mov rbx, rax
 mov rax, 1
 int 80h
 main:
-mov rbp, rsp
-sub rsp, 40
-push 5
-pop rax
-mov [rbp-8], rax
 push rbp
-mov rax, rbp
-sub rax, 8
-push rax
-call _1
-mov rsp, rbp
+mov rbp, rsp
+sub rsp, 16
+sub rsp, 16
+mov QWORD [rsp], 4
+lea rsi, [rsp]
+lea rdi, [rbp-8]
+mov rcx, 8
+rep movsb
 add rsp, 16
+sub rsp, 16
+sub rsp, 16
+sub rsp, 16
+lea rsi, [rbp-8]
+lea rdi, [rsp]
+mov rcx, 8
+rep movsb
+lea rdi, [rsp+16]
+lea rsi, [rsp]
+mov rcx, 8
+rep movsb
+add rsp, 16
+call factorial
+add rsp, 16
+lea rdi, [rbp+16]
+lea rsi, [rsp]
+mov rcx, 8
+rep movsb
+mov rsp, rbp
 pop rbp
-push rax
-push 100
-pop rax
-mov [rbp-16], rax
-mov rax, rbp
-sub rax, 16
-push rax
-pop rax
-mov [rbp-24], rax
-mov rax, rbp
-sub rax, 24
-push rax
-pop rax
-mov [rbp-32], rax
-mov rax, rbp
-sub rax, 32
-push rax
-pop rax
-mov [rbp-40], rax
-mov rax, rbp
-sub rax, 40
-mov rax, [rax]
-mov rax, [rax]
-mov rax, [rax]
-push rax
-push 1
-pop rax
-pop rbx
-mov [rbx], rax
-push QWORD[rbp-8]
-push QWORD[rbp-16]
-pop rbx
-pop rax
-add rax, rbx
-push rax
-pop rax
-push QWORD[rbp]
 ret
-mov rax, 0
-push QWORD[rbp]
+mov rsp, rbp
+pop rbp
 ret
-_1:
+factorial:
+push rbp
 mov rbp, rsp
 sub rsp, 0
-push rbp
-mov rax, rbp
-add rax, 8
-push rax
-call _2
-mov rsp, rbp
+sub rsp, 16
+lea rsi, [rbp+16]
+lea rdi, [rsp]
+mov rcx, 8
+rep movsb
+sub rsp, 16
+mov QWORD [rsp], 0
+mov rax, [rsp+16]
+mov rbx, [rsp]
 add rsp, 16
-pop rbp
-push rax
+cmp rax, rbx
+mov rax, 1
+je _temp$$$2
 mov rax, 0
-push QWORD[rbp]
-ret
-_2:
-mov rbp, rsp
-sub rsp, 0
-push rbp
-mov rax, rbp
-add rax, 8
-push rax
-call _3
-mov rsp, rbp
+_temp$$$2:
+mov [rsp], rax
+mov rax, [rsp]
 add rsp, 16
+and rax, 1
+cmp rax, 1
+jne _else$$$1
+sub rsp, 16
+mov QWORD [rsp], 1
+lea rdi, [rbp+32]
+lea rsi, [rsp]
+mov rcx, 8
+rep movsb
+mov rsp, rbp
 pop rbp
-push rax
-mov rax, 0
-push QWORD[rbp]
 ret
-_3:
-mov rbp, rsp
-sub rsp, 0
-mov rax, rbp
-add rax, 8
-mov rax, [rax]
-mov rax, [rax]
-mov rax, [rax]
-push rax
-push 68
-pop rax
-pop rbx
-mov [rbx], rax
+jmp _endif$$$0
+_else$$$1:
+_endif$$$0:
+sub rsp, 16
+lea rsi, [rbp+16]
+lea rdi, [rsp]
+mov rcx, 8
+rep movsb
+sub rsp, 16
+mov QWORD [rsp], 1
+mov rax, [rsp+16]
+mov rbx, [rsp]
+add rsp, 16
+cmp rax, rbx
+mov rax, 1
+je _temp$$$5
 mov rax, 0
-push QWORD[rbp]
+_temp$$$5:
+mov [rsp], rax
+mov rax, [rsp]
+add rsp, 16
+and rax, 1
+cmp rax, 1
+jne _else$$$4
+sub rsp, 16
+mov QWORD [rsp], 1
+lea rdi, [rbp+32]
+lea rsi, [rsp]
+mov rcx, 8
+rep movsb
+mov rsp, rbp
+pop rbp
+ret
+jmp _endif$$$3
+_else$$$4:
+_endif$$$3:
+sub rsp, 16
+sub rsp, 16
+sub rsp, 16
+lea rsi, [rbp+16]
+lea rdi, [rsp]
+mov rcx, 8
+rep movsb
+sub rsp, 16
+mov QWORD [rsp], 1
+mov rax, [rsp+16]
+mov rbx, [rsp]
+add rsp, 16
+sub rax, rbx
+mov [rsp], rax
+lea rdi, [rsp+16]
+lea rsi, [rsp]
+mov rcx, 8
+rep movsb
+add rsp, 16
+call factorial
+add rsp, 16
+sub rsp, 16
+lea rsi, [rbp+16]
+lea rdi, [rsp]
+mov rcx, 8
+rep movsb
+mov rax, [rsp+16]
+mov rbx, [rsp]
+add rsp, 16
+xor rdx, rdx
+imul rbx
+mov [rsp], rax
+lea rdi, [rbp+32]
+lea rsi, [rsp]
+mov rcx, 8
+rep movsb
+mov rsp, rbp
+pop rbp
+ret
+mov rsp, rbp
+pop rbp
 ret

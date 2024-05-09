@@ -9,6 +9,19 @@ public interface IContainer
     List<LetNode> GetVariables();
 }
 
+public class StackVar {
+    public VType Type;
+    public string WorkingName;
+    public int Offset;
+
+    public StackVar(VType type, string workingName, int offset)
+    {
+        Type = type;
+        WorkingName = workingName;
+        Offset = offset;
+    }
+}
+
 public class FndefNode : IContainer
 {
     public string Name => NameT.Value;
@@ -23,8 +36,23 @@ public class FndefNode : IContainer
     public Token? RetTypeT;
     public BlockNode Block;
 
-    public List<string> ArgsInternal;
-    public List<string> VarsInternal;
+    public int StackSize;
+
+    public int ArgsSize;
+    public int ArgsPadSize;
+
+    public bool IsArg(string wname, out StackVar svar)
+    {
+        var argf = ArgsInternal.Find(v => v.WorkingName == wname);
+        if(argf is not null) { svar = argf; return true; }
+        svar = VarsInternal.Find(v => v.WorkingName == wname)!;
+        return false;
+    }
+
+    public StackVar GetVar(string wname) { return VarsInternal.Find(v => v.WorkingName == wname)!; }
+
+    public List<StackVar> ArgsInternal;
+    public List<StackVar> VarsInternal;
 
     public FndefNode(Token origin, Token name, List<(VType type, Token name)> args, VType retType, Token? retTypeT, BlockNode block)
     {
@@ -72,9 +100,12 @@ public class AST
 {
     public List<FndefNode> Fndefs;
 
+    public Dictionary<string, TypeInfo> TypeInfos;
+
     public AST()
     {
         Fndefs = new();
+        TypeInfos = new();
     }
 
     public override string ToString() { return string.Join("\n", Fndefs); }

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Linq;
 
 namespace EdComp;
@@ -45,18 +46,45 @@ public class VPointer : VTypeMod
     public VPointer() {}
 }
 
+
+public class TypeInfo
+{
+    public int ByteSize { get; set; }
+    public int Alignment { get; set; }
+
+    public List<(string Name, VType Type, int offset)> Members = new();
+
+    public TypeInfo(int bs, int al = -1) { ByteSize = bs; Alignment = al < 0 ? ByteSize : al; }
+
+    public static readonly TypeInfo Pointer = new(Settings.Bytes);
+    public static readonly TypeInfo Array = new(Settings.Bytes * 2) { Members = { 
+        ( "ptr", VType.Void.Modify(VTypeMod.Pointer()), 0 ), 
+        ( "len", VType.Int, 8 ), 
+    }};
+}
+
 // FUCK Equals() and GetHashCode(), all my homies FUCKING HATE Equals() and GetHashCode()
 public class VType
 {
     public static VType Int => new("int");
     public static VType Bool => new("bool");
-    public static VType Void => new("");
+    public static VType Void => new("void");
 
     public bool Valid;
     public string Name;
     public List<VTypeMod> Mods;
 
+    public TypeInfo GetInfo(Dictionary<string, TypeInfo> source)
+    {
+        if(this.Is<VPointer>()) return TypeInfo.Pointer;
+        if(this.Is<VArray>()) return TypeInfo.Array;
+        if(source is null) return null;
+        if(!source.ContainsKey(this.Name)) return null;
+        return source[this.Name];
+    }
+
     public void RemoveLastMod() => Mods.RemoveAt(Mods.Count - 1);
+    public VType Modify(VTypeMod mod) { Mods.Add(mod); return this; }
 
     public VType Copy() => Valid ? new (Name, new List<VTypeMod>(Mods)) : new();
     public static VType Invalid => new();

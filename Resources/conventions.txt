@@ -1,0 +1,108 @@
+Windows x64
+https://learn.microsoft.com/en-us/cpp/build/x64-calling-convention?view=msvc-170
+
+Each argument has an index from 0 to n
+Depending on whether an arg is an int, float, or struct with weird size,
+it gets passed the following way
+(weird size means > 64 bits or not a power of two)
+
+index |   0  |   1  |   2  |   3  |  4-n  |
+int   |  RCX |  RDX |  R8  |  R9  | stack |
+weird | *RCX | *RDX | *R8  | *R9  | stack |
+float | XMM0 | XMM1 | XMM2 | XMM3 | stack |
+
+keep in mind, that 4-n gets pushed in reverse order, so that the 4th arg
+ends up the closest to the stack frame, and nth arg the furthest
+
+There's an exception - if the function has variadic arguments, floats should
+be put both into the R*X and XMM* registers
+
+If the return value fits in 64 bits, it is returned in RAX
+If the return value is float related and fits in 128 bits, it is returned in XMM0
+Otherwise, caller should provide a pointer to write the return value, and pass
+it as an implicit first argument (RCX), shifting all other arguments by 1
+This pointer should also be 16-bit aligned
+
+Before (or rather after) pushing arguments on the stack, you should also reserve
+32 (8 * 4) bytes for shadow space (to juggle around arguments presumably)
+
+Also at any point (before calling a function) the stack MUST be 16 byte aligned
+(or I guess it must NOT be, so that when we use CALL it gets aligned)
+
+
+
+Linux x64 (System-V) (holy fuck this is complicated)
+https://refspecs.linuxbase.org/elf/x86_64-abi-0.99.pdf
+
+So first all of the arguments are classified in the following way:
+
+Base types:
+
+INTEGER             - < 64 bit (ints, chars, anything like that)
+SSE                 - stuff in the vector registers (floats, doubles, 64 bit)
+SSEUP               - more stuff in vec registers (upper parts of 128/256 stuff)
+X87, X87UP          - previous 2 but for FPUs (long double mantissa and exp)
+COMPLEX_X87         - same as previous (specifically complex long double)
+NO_CLASS            - dummy value and padding
+MEMORY              - just any garbage
+
+structs are classified in the following way:
+
+If |struct| > 256 (or unaligned fields) - MEMORY
+Otherwise, we split the struct into 8 byte chunks (or less), and each is
+classified individually and recursively by its fields (foldl)
+
+If types are equal, this type is the result
+If one type is NO_CLASS, result is the other type
+If one type is MEMORY, result is MEMORY
+If one type is INTEGER, result is INTEGER
+If one type is X87, X87UP or COMPLEX_X87, result is MEMORY
+Otherwise SSE (if I got it correctly, SSEUP gets assigned only to few specific
+types, these types being: __float128, _Decimal128, __m128, __m256)
+
+Then we clean up:
+
+If a single chunk is MEMORY, whole struct is MEMORY
+If X87UP doesn't have X87 before it, whole struct is MEMORY
+If |struct| > 128 and first chunk isn't SSE, or all other chunks aren't SSEUP,
+the whole struct is MEMORY
+If any of the SSEUP isn't preceded by SSE or SSEUP, treat it as SSE
+
+After classification, we pass all the stuff (if struct isn't MEMORY, we pass
+each of its chunks separately depending on its type)
+
+MEMORY      - On the stack (stack is aligned in the same way as structs)
+INTEGER     - Use next available INTEGER register, or push onto the stack
+SSE         - Use next available VECTOR register, or push onto the stack
+SSEUP       - Use next available 8 byte chunk of the last accessed VECTOR
+              register
+X87*        - Stack
+
+INTEGER registers : [ rdi, rsi, rdx, rcx, r8, r9 ], then stack
+VECTOR registers : [ xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm6 ], then stack
+
+Again, if struct isn't MEMORY, we assign each register separately into registers,
+BBBUUUUTTTT, if the whole struct doesn't fit into the registers (eg. 2 chunks fit, 
+one doesn't), we unassign all those registers and push THE ENTIRE STRUCT to the 
+stack
+
+Also, if the function has variadic arguments, "al" has to contain the amount
+of assigned vector registers (at least the upper bound)
+
+I honestly wish that specifications were even more verbose, lol
+
+System-V ABI is vague about __m256 - I can't figure out, if CPU doesn't support it
+how does it actually handle it? It seems to pass the algorithm regardless
+
+So, returning values
+
+MEMORY      - We pass destination pointer as an implicit first argument (rax will
+              also this pointer after the call)
+INTEGER     - We use rax and rdx if needed (16 byte INTEGER struct)
+SSE         - xmm0 and xmm1 if needed
+SSEUP       - next available 8 byte of last used register
+X87         - st0
+X87UP       - after X87
+COMPLEX_X87 - real on st0, complex on st1
+
+structs are returned in a similar manner as they are passed

@@ -186,3 +186,6 @@ in the ass to store them I think
 
 Even more thinking after - let@ should work the same with arrays, and @[] will be used to protect it from
 "gc". It just makes the syntax more consistent
+
+The whole padding thing is harder than I though, so 4 byte stuff actually needs to be aligned at 4 bytes,
+which kinda makes sense, but it'll be difficult nonetheless

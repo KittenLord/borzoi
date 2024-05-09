@@ -1,24 +1,11 @@
 fn main() int {
-    let int a = 5
-    call _1(@a)
-
-    let int b = 100
-    let int@ bp = @b
-    let int@@ bpp = @bp
-    let int@@@ bppp = @bpp
-    mut bppp@@@ = 1
-
-    ret a + b
+    let int n = 4
+    ret factorial(n)
 }
 
-fn _1(int@ p) {
-    call _2(@p)
+fn factorial(int n) int {
+    if n == 0 { ret 1 }
+    if n == 1 { ret 1 }
+    ret factorial(n - 1) * n
 }
 
-fn _2(int@@ p) {
-    call _3(@p)
-}
-
-fn _3(int@@@ p) {
-    mut p@@@ = 68
-}

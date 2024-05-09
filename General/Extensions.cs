@@ -10,4 +10,10 @@ public static class Extensions
     {
         return string.Join("\n", str.Split("\n").Select(s => "\t" + s));
     }
+
+    public static int Pad(this int num, int pad)
+    {
+        while(num % pad != 0) num++;
+        return num;
+    }
 }

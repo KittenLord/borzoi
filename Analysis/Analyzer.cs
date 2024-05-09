@@ -26,7 +26,21 @@ public class Analyzer
 {
     public AST AST;
     public List<Identifier> Identifiers;
+
+    public Dictionary<string, TypeInfo> TypeInfos;
     public List<VType> Types;
+
+    public void RegisterType(VType vtype, TypeInfo info)
+    {
+        if(TypeExists(vtype.Name, out _)) 
+        {
+            // TODO: Err
+            return;
+        }
+
+        Types.Add(vtype);
+        TypeInfos[vtype.Name] = info;
+    }
 
     public List<Message> Errors { get; private set; }
     public bool Success { get; private set; }
@@ -36,6 +50,7 @@ public class Analyzer
         Errors = new();
         Identifiers = new();
         Types = new();
+        TypeInfos = new();
     }
 
     private void Report(string error, Token position) => Report(new Message(error, position));
@@ -123,7 +138,7 @@ public class Analyzer
                 // TODO: Arg origin?
 
                 var id = new Identifier(arg.Name, wname, arg.Type, fn.Origin);
-                fn.ArgsInternal.Add(wname);
+                fn.ArgsInternal.Add(new StackVar(arg.Type, wname, -1));
                 Identifiers.Add(id);
             }
 
@@ -363,7 +378,7 @@ public class Analyzer
 
                 let.Var = new Var(let.Origin, let.Name, wname, let.Type);
                 var id = new Identifier(let.Name, wname, let.Type, let.Origin);
-                fn.VarsInternal.Add(wname);
+                fn.VarsInternal.Add(new StackVar(let.Type, wname, -1));
                 Identifiers.Add(id);
             }
             else if(line is CallNode call)
@@ -443,14 +458,17 @@ public class Analyzer
 
     public void Analyze()
     {
-        Types.Add(VType.Int);
-        Types.Add(VType.Bool);
-        Types.Add(VType.Void);
+        RegisterType(VType.Int, new(Settings.Bytes));
+        RegisterType(VType.Bool, new(1));
+        RegisterType(VType.Void, new(0));
+
         if(!AST.Fndefs.Any(fn => fn.Name == "main"))
         {
             Report(Error.NoEntryPoint());
             return;
         }
+
         var result = FigureOutTypesAndStuff();
+        AST.TypeInfos = TypeInfos;
     }
 }
