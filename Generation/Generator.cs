@@ -69,6 +69,9 @@ public class Generator
         "int 80h\n" +
 
 
+
+
+        // FIXME: THE FUCKING GARBAGE COLLECTOR DOESNT WORK AAAAAAAAAAAAAAAAAAAAAAAAA
         "$gccheck:\n" +
         "push rbp\n" +
         "mov rax, [rel $gccap]\n" +
@@ -101,6 +104,7 @@ public class Generator
         "mov [rel $gclen], rbx\n" +
         "call $gccheck\n" +
         "mov rax, [rel $gcptr]\n" +
+        "mov rbx, [rel $gclen]\n" +
         "mov [rax + rbx*8], r12\n" +
         "pop rbp\n" +
         "ret\n" +
@@ -127,44 +131,16 @@ public class Generator
         "$gcpop:\n" +
         "push rbp\n" +
 
-
-
-
-
-
-
-
-
-        "sub rsp, 32\n" +
-        "mov rbx, [rel $gclen]\n" +
-        "mov r12, [rel $gcptr]\n" +
-        "mov rdx, [r12 + rbx*8]\n" +
-        "mov rcx, $OutOfBounds\n" +
-        "mov r8, [rel $gclen]\n" +
-        "mov r9, [rel $gcptr]\n" +
-        "call printf\n" +
-        "add rsp, 32\n" +
-
-
         "mov rbx, [rel $gclen]\n" +
         "mov r12, [rel $gcptr]\n" +
         "mov rdi, [r12 + rbx*8]\n" +
-        $"{(Windows ? "mov rcx, [r12 + rbx*8]\n" : "")}" +
+        $"{(Windows ? "mov rcx, rdi\n" : "")}" +
         "mov r12, rdi\n" +
-
-
-
-
-
 
         "sub rsp, 32\n" +
         "call free\n" +
-
-
-
-
-
         "add rsp, 32\n" +
+
         "mov rax, [rel $gclen]\n" +
         "sub rax, 1\n" +
         "mov [rel $gclen], rax\n" +
