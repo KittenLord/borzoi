@@ -325,7 +325,11 @@ public class Parser
         return null;
     }
 
-    private static readonly TokenType[] Binops = [TokenType.Plus, TokenType.Minus, TokenType.Mul, TokenType.Div, TokenType.Mod, TokenType.Eq, TokenType.Neq, TokenType.Ls, TokenType.Le, TokenType.Gr, TokenType.Ge];
+    private static readonly TokenType[] Binops = 
+        [TokenType.Plus, TokenType.Minus, TokenType.Mul, TokenType.Div, TokenType.Mod, 
+         TokenType.Eq, TokenType.Neq, 
+         TokenType.Ls, TokenType.Le, TokenType.Gr, TokenType.Ge];
+
     private bool IsBinop(Token binop) { return Binops.Contains(binop.Type); }
     private int GetBinopPriority(Token binop)
     {
@@ -339,7 +343,12 @@ public class Parser
         };
     }
 
-    private static readonly TokenType[] leafTokens = [TokenType.IntLit, TokenType.BoolLit, TokenType.Id, TokenType.LParen, TokenType.LBrack, TokenType.Mul, TokenType.Pointer];
+    private static readonly TokenType[] leafTokens = 
+        [TokenType.IntLit, TokenType.BoolLit, TokenType.Id, 
+         TokenType.LParen, TokenType.LBrack, 
+         TokenType.Mul, TokenType.Pointer,
+         TokenType.Not];
+
     private bool CanStartLeaf(TokenType t) => leafTokens.Contains(t);
     private IExpr? ParseExprLeaf()
     {
@@ -364,6 +373,20 @@ public class Parser
             }
 
             return new PointerOp(origin, expr);
+        }
+        if(Peek().Is(TokenType.Not))
+        {
+            var origin = Pop();
+            if(!CanStartLeaf(Peek().Type))
+            {
+                Report(Error.Expected(leafTokens, Peek()));
+                return null;
+            }
+
+            var expr = ParseExpr();
+            if(expr is null) { return null; }
+
+            return new NegateOp(origin, expr);
         }
         if(Peek().Is(TokenType.Id)) 
         {

@@ -1,0 +1,24 @@
+fn main() bool {
+    let int index = 64
+
+    let int length = 100
+    let bool[] nums = *length
+    let int counter = 0
+
+    while counter < length {
+        let bool result = false
+        let int ic = 0
+
+        while ic < counter + 1 {
+            if ic * ic == counter {
+                mut result = true
+            }
+            mut ic = ic + 1
+        }
+
+        mut nums[counter] = result
+        mut counter = counter + 1
+    }
+
+    ret nums[index]
+}

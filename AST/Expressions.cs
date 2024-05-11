@@ -124,6 +124,16 @@ public class PointerOp : IExpr
     public override string ToString() { return $"@\n{Expr.ToString().Indent()}"; }
 }
 
+public class NegateOp : IExpr
+{
+    public VType? Type { get; set; }
+    public Token Origin;
+    public IExpr Expr;
+
+    public NegateOp(Token origin, IExpr expr) { Origin = origin; Expr = expr; }
+    public override string ToString() { return $"~\n{Expr.ToString().Indent()}"; }
+}
+
 public class BinopNode : IExpr
 {
     public VType Type { get; set; }

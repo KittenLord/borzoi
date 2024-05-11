@@ -40,8 +40,9 @@ public class Program
         System.Console.WriteLine($"--------------------");
         System.Console.WriteLine($"{string.Join("\n", fn.VarsInternal)}");
 
-        var generator = new Generator(analyzer.AST);
-        var nasmCode = generator.Generate(RuntimeInformation.IsOSPlatform(OSPlatform.Windows));
+        var windows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+        var generator = new Generator(analyzer.AST, windows, true);
+        var nasmCode = generator.Generate();
         File.WriteAllText(outputFilePath, nasmCode);
     }
 

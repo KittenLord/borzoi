@@ -253,6 +253,18 @@ public class Analyzer
         }
         if(expr is IntLit) return VType.Int;
         if(expr is BoolLit) return VType.Bool;
+        if(expr is NegateOp negop)
+        {
+            var type = FigureOutTheTypeOfAExpr(prefix, negop.Expr, hint);
+            if(type != VType.Int && type != VType.Bool)
+            {
+                Report(Error.TypeMismatchMany([VType.Int, VType.Bool], type, negop.Origin));
+                return VType.Invalid;
+            }
+
+            negop.Type = type;
+            return type;
+        }
         if(expr is ArrayLit arr)
         {
             // Infer type of an empty array

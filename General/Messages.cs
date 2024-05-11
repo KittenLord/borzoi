@@ -1,3 +1,5 @@
+using System.Linq;
+
 public class Message
 {
     public string Msg;
@@ -83,6 +85,11 @@ namespace EdComp.Analysis.Msg
         public static Message TypeMismatch(VType supposed, VType actual, Token position) =>
         new Message(
             $"Expected expression of type {supposed}, found one of type {actual}",
+            position);
+
+        public static Message TypeMismatchMany(VType[] supposed, VType actual, Token position) =>
+        new Message(
+            $"Expected expression of one of the following types: {string.Join(", ", supposed.Select(t => t.ToString()))}, found one of type {actual}",
             position);
 
         public static Message BinaryOperatorUndefined(Token op, VType left, VType right, Token position) =>

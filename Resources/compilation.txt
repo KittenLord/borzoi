@@ -189,3 +189,5 @@ Even more thinking after - let@ should work the same with arrays, and @[] will b
 
 The whole padding thing is harder than I though, so 4 byte stuff actually needs to be aligned at 4 bytes,
 which kinda makes sense, but it'll be difficult nonetheless
+
+Note to self - don't forget to use [rel $address$] (also read about it later)
