@@ -17,3 +17,18 @@ I really overscope the previous one, block evaluation is fun of course,
 but it's stupid to try to implement it on the first try lol
 
 This one probably won't even have structs, just int/bool/float/string
+
+
+
+[] - gc collected array
+@[] - just an array
+"" - gc collected string
+@"" - just a string
+
++ - concatenate arrays, result is gc'd
++@ - same, but no gc
+
+maybe even * and *@ for self concatenation?
+
+Though now that I think about it, this might be making syntax
+ambiguous... maybe use smth else for gc/not gc? &?

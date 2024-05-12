@@ -556,6 +556,7 @@ public class Analyzer
     {
         RegisterType(VType.Int, new(Settings.Bytes));
         RegisterType(VType.Bool, new(1));
+        RegisterType(VType.Byte, new(1));
         RegisterType(VType.Void, new(0));
 
         if(!AST.Fndefs.Any(fn => fn.Name == "main"))

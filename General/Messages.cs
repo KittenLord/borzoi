@@ -39,6 +39,15 @@ namespace EdComp.Lexing.Msg
 {
     public static class Error
     {
+        public static Message InvalidEscapeCharacter(char c, Token pos) =>
+        new Message(
+            $"\"\\{c}\" is not a valid escape sequence",
+            pos);
+
+        public static Message StringNotClosed(Token pos) =>
+        new Message(
+            $"A string must be opened and closed on the same line",
+            pos);
     }
 }
 

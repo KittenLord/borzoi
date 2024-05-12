@@ -97,6 +97,15 @@ public class BoolLit : IExpr
     public override string ToString() { return $"{Value} :: Bool"; }
 }
 
+public class StrLit : IExpr
+{
+    public VType Type { get; set; } = VType.Byte.Modify(VTypeMod.Arr());
+    public string Value;
+    public StrLit(string value) { Value = value; }
+
+    public override string ToString() { return $"{Value} :: String"; }
+}
+
 public class ArrayLit : IExpr
 {
     public VType? Type { get; set; }

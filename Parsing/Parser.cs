@@ -422,7 +422,8 @@ public class Parser
     }
 
     private static readonly TokenType[] leafTokens = 
-        [TokenType.IntLit, TokenType.BoolLit, TokenType.Id, 
+        [TokenType.IntLit, TokenType.BoolLit, TokenType.StrLit, 
+         TokenType.Id, 
          TokenType.LParen, TokenType.LBrack, 
          TokenType.Mul, TokenType.Pointer,
          TokenType.Not];
@@ -433,6 +434,7 @@ public class Parser
         if(!CanStartLeaf(Peek().Type)) throw new System.Exception("FUUUCK");
         if(Peek().Is(TokenType.IntLit)) return new IntLit(Pop().IntValue);
         if(Peek().Is(TokenType.BoolLit)) return new BoolLit(Pop().BoolValue);
+        if(Peek().Is(TokenType.StrLit)) return new StrLit(Pop().StringValue);
         if(Peek().Is(TokenType.Pointer))
         {
             var origin = Pop();

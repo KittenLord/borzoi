@@ -1,9 +1,5 @@
-cfn cprintf from printf(int[] fmt, *) int
-cfn cscanf from scanf(int[] fmt) int
+cfn read from scanf(byte[] format, *) int
 
 fn main() int {
-    let int[] fmt = []
-    call cprintf(fmt, 1, 2, 3)
 
-    ret 0
 }

@@ -545,6 +545,78 @@ public class Generator
                     result += $"call {label}\n";
                     result += $"add rsp, {fnn.ArgsPadSize + fnn.ArgsSize}\n";
                 }
+                else if((cfn = AST.CFndefs.Find(cf => cf.Name == varl.Name)) is not null)
+                {
+                    if(Windows)
+                    {
+                        // Win 64
+                        // 
+                        // Ima write the algorithm first:
+                        // 1. Evaluate all arguments
+                        // 2. Calculate stack frame size
+                        // 3. Assign arguments from right to left
+
+                        int restoreStack = 32;
+
+                        Queue<int> offsets = new();
+                        for(int i = func.Args.Count - 1; i >= 0; i--)
+                        {
+                            var argExpr = func.Args[i];
+                            var argInfo = argExpr.Type.GetInfo(AST.TypeInfos);
+                            if(i != func.Args.Count - 1)
+                                offsets.Enqueue(argInfo.ByteSize.Pad(16));
+                            restoreStack += argInfo.ByteSize.Pad(16);
+                            result += GenerateExpr(fn, argExpr);
+                        }
+                        
+                        var pad = func.Args.Count > 4 && func.Args.Count % 2 != 0;
+                        if(pad) 
+                        { 
+                            restoreStack += Settings.Bytes; 
+                            result += "sub rsp, 8\n"; 
+                            offsets.Enqueue(Settings.Bytes);
+                        }
+                        if(func.Args.Count > 4) 
+                            { restoreStack += func.Args.Count * Settings.Bytes; }
+
+                        int extraOffset = 0;
+                        for(int i = func.Args.Count - 1; i >= 0; i--)
+                        {
+                            var offset = offsets.Sum() + extraOffset;
+                            var argInfo = func.Args[i].Type.GetInfo(AST.TypeInfos);
+                            int[] nonPointerSizes = [1, 2, 4, 8];
+                            var byPointer = !nonPointerSizes.Contains(argInfo.ByteSize);
+                            if(func.Args[i].Type.Is<VArray>()) byPointer = false;
+                            var op = byPointer ? "lea" : "mov";
+
+                            if(i == 0)      result += $"{op} rcx, [rsp+{offset}]\n";
+                            else if(i == 1) result += $"{op} rdx, [rsp+{offset}]\n";
+                            else if(i == 2) result += $"{op} r8, [rsp+{offset}]\n";
+                            else if(i == 3) result += $"{op} r9, [rsp+{offset}]\n";
+
+                            else
+                            {
+                                extraOffset += Settings.Bytes;
+                                result += $"lea rsi, [rsp+{offset}]\n";
+                                result += "push 0\n";
+                                result += "lea rdi, [rsp]\n";
+                                result += $"mov rcx, {argInfo.ByteSize}\n";
+                                result += "rep movsb\n";
+                            }
+
+                            if(offsets.Count > 0) offsets.Dequeue();
+                        }
+
+                        result += "sub rsp, 32\n";
+                        result += $"call {cfn.CName}\n";
+                        result += $"add rsp, {restoreStack}\n";
+                    }
+                    else
+                    {
+                        // System V
+                    }
+                }
+                else throw new System.Exception("amgogus");
             }
 
             bool first = true;
@@ -642,7 +714,7 @@ public class Generator
 
             result += $"sub rsp, 16\n";
             result += $"mov QWORD [rsp+8], {arr.Elems.Count}\n";
-            result += $"mov {(Windows ? "rcx" : "rdi")}, {arr.Elems.Count}\n";
+            result += $"mov {(Windows ? "rcx" : "rdi")}, {arr.Elems.Count+1}\n";
             result += $"mov {(Windows ? "rdx" : "rsi")}, {info.ByteSize}\n";
             result += "sub rsp, 32\n";
             result += $"call calloc\n";
@@ -678,6 +750,7 @@ public class Generator
 
             result += $"sub rsp, 16\n";
             result += $"mov QWORD [rsp+8], rax\n";
+            result += "inc rax\n"; // guaranteed null terminator
             result += $"mov {(Windows ? "rcx" : "rdi")}, rax\n";
             result += $"mov {(Windows ? "rdx" : "rsi")}, {info.ByteSize}\n";
             result += "sub rsp, 32\n";

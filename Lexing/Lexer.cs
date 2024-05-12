@@ -3,6 +3,7 @@ using System.Linq;
 using System.Collections.Generic;
 
 namespace EdComp.Lexing;
+using EdComp.Lexing.Msg;
 
 public class Lexer
 {
@@ -11,6 +12,16 @@ public class Lexer
     public int Char { get; private set; }
     public int Line { get; private set; }
     private int PeekStart;
+
+    public List<Message> Errors { get; private set; }
+    public bool Success { get; private set; }
+
+    private void Report(string error, Token position) => Report(new Message(error, position));
+    private void Report(Message error)
+    {
+        Success = false;
+        Errors.Add(error);
+    }
 
     private bool IsNewLine(char c) => c == '\n';
     private bool IsWhitespace(char c) => " \t\r\n".Contains(c);
@@ -48,6 +59,8 @@ public class Lexer
         Text = new(text.Reverse());
         TokenStream = new();
         Char = Line = PeekStart = 0;
+        Errors = new();
+        Success = true;
     }
 
     public Token Pop()
@@ -68,6 +81,7 @@ public class Lexer
         if(!PeekPred()) return Put(TokenType.EOF);
         if(PeekPred(CanStartId)) return ReadIdentifier();
         if(PeekPred(CanStartNum)) return ReadNumber();
+        if(PeekPred(Eq('\"'))) return ReadString();
 
         if(PeekPred(Eq('+'))) return Put(TokenType.Plus, Popc());
         if(PeekPred(Eq('-'))) return Put(TokenType.Minus, Popc());
@@ -89,6 +103,44 @@ public class Lexer
 
         Popc();
         return Put(TokenType.Illegal);
+    }
+
+    private Token ReadString()
+    {
+        Popc(); // Opening
+        bool fail = false;
+        System.Text.StringBuilder sb = new();
+        while(!PeekPred("\"")) 
+        {
+            if(PeekPred("\n"))
+            {
+                fail = true;
+                break;
+            }
+            if(PeekPred("\\"))
+            {
+                Popc();
+
+                     if(PeekPred(Eq('"'))) { Popc(); sb.Append('"'); }
+                else if(PeekPred(Eq('n'))) { Popc(); sb.Append('\n'); }
+                else if(PeekPred(Eq('\\'))) { Popc(); sb.Append('\\'); }
+                else if(PeekPred(Eq('t'))) { Popc(); sb.Append('\t'); }
+                else if(PeekPred(Eq('0'))) { Popc(); sb.Append('\0'); }
+                else { Report(Error.InvalidEscapeCharacter(Popc(), Token.Pos(Line, Char))); }
+            }
+            else
+            {
+                sb.Append(Popc());
+            }
+        }
+
+        if(PeekPred("\"")) Popc();
+        else fail = true;
+
+        if(fail) return Put(TokenType.Illegal, sb.ToString());
+        var token = Put(TokenType.StrLit, sb.ToString());
+        token.StringValue = sb.ToString();
+        return token;
     }
 
     private Token ReadOperator()

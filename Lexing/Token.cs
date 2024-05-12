@@ -9,6 +9,7 @@ public class Token
     public string Value { get; private set; }
     public int IntValue;
     public bool BoolValue;
+    public string StringValue;
 
     public int Line { get; private set; }
     public int Char { get; private set; }
@@ -24,6 +25,12 @@ public class Token
         Line = line;
         Char = c;
         Length = l;
+    }
+
+    public static Token Pos(int line, int charn)
+    {
+        var token = new Token(TokenType.Illegal, "", line, charn, 0);
+        return token;
     }
 
     public override string ToString()

@@ -5,8 +5,8 @@ extern calloc
 extern free
 extern printf
 extern ExitProcess
-extern scanf
 section .data
+fmt: db `\u263a`,0
 $OutOfBounds: db "Attempted to get item %d of an array with length %d",0xA,0
 $gclen: dq -1
 $gccap: dq 4
@@ -106,8 +106,8 @@ sub rsp, 16
 call $gcframe
 sub rsp, 16
 mov QWORD [rsp+8], 0
-mov rcx, 0
-mov rdx, 8
+mov rcx, 1
+mov rdx, 1
 sub rsp, 32
 call calloc
 add rsp, 32
@@ -115,9 +115,25 @@ mov [rsp], rax
 mov r12, rax
 call $gcpush
 pop rax
+mov rax, fmt
 mov [rbp-16], rax
 pop rax
 mov [rbp-16+8], rax
+push 0
+push 3
+push 0
+push 2
+push 0
+push 1
+push QWORD [rbp-16+8]
+push QWORD [rbp-16+0]
+mov r9, [rsp+48]
+mov r8, [rsp+32]
+mov rdx, [rsp+16]
+mov rcx, [rsp+0]
+sub rsp, 32
+call printf
+add rsp, 96
 add rsp, 16
 push 0
 push 0
