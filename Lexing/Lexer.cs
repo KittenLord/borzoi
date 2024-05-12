@@ -137,6 +137,7 @@ public class Lexer
 
         if(id == "fn") return Put(TokenType.Fn, id);
         if(id == "cfn") return Put(TokenType.Cfn, id);
+        if(id == "from") return Put(TokenType.From, id);
         if(id == "call") return Put(TokenType.Call, id);
         if(id == "let") return Put(TokenType.Let, id);
         if(id == "mut") return Put(TokenType.Mut, id);

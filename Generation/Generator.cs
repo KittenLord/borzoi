@@ -19,14 +19,20 @@ public class Generator
 
     public string Generate()
     {
+        List<string> externFunctions = 
+            [ "malloc", "realloc", "calloc", "free", "printf" ];
+        if(Windows) externFunctions.AddRange(
+            [ "ExitProcess" ]);
+
+        foreach(var cfn in AST.CFndefs)
+        {
+            if(!externFunctions.Contains(cfn.CName))
+                { externFunctions.Add(cfn.CName); }
+        }
+
         string result = 
         "BITS 64\n" +
-        (Windows ? "extern ExitProcess\n" : "") +
-        "extern malloc\n" + // We ball
-        "extern realloc\n" +
-        "extern calloc\n" +
-        "extern free\n" +
-        "extern printf\n" +
+        string.Join("", externFunctions.Select(fn => $"extern {fn}\n")) +
 
         "section .data\n" +
         "$OutOfBounds: db \"Attempted to get item %d of an array with length %d\",0xA,0\n" +
@@ -71,7 +77,6 @@ public class Generator
 
 
 
-        // FIXME: THE FUCKING GARBAGE COLLECTOR DOESNT WORK AAAAAAAAAAAAAAAAAAAAAAAAA
         "$gccheck:\n" +
         "push rbp\n" +
         "mov rax, [rel $gccap]\n" +
@@ -473,6 +478,7 @@ public class Generator
         }
         else if(expr is Var varl)
         {
+            var type = varl.Type.Copy();
             // TODO: I'm almost sure that I fucked up accessors' order here
             if(varl.Accessors.Count == 0 || varl.Accessors.First() is not FuncAcc)
             {
@@ -510,40 +516,48 @@ public class Generator
             }
             else if(varl.Accessors.First() is FuncAcc func)
             {
-                var label = varl.WorkingName;
-                var fnn = AST.Fndefs.Find(f => f.Name == varl.Name);
-                var retInfo = fnn.RetType.GetInfo(AST.TypeInfos);
-
-                result += $"sub rsp, {retInfo.ByteSize.Pad(16)}\n";
-                result += $"sub rsp, {fnn.ArgsPadSize + fnn.ArgsSize}\n";
-
-                var args = new List<IExpr>(func.Args);
-
-                for(int i = args.Count - 1; i >= 0; i--)
+                FndefNode? fnn;
+                CFndefNode? cfn;
+                if((fnn = AST.Fndefs.Find(f => f.Name == varl.Name)) is not null)
                 {
-                    var argExpr = args[i];
-                    var offset = fnn.ArgsInternal[i].Offset;
-                    var typeInfo = argExpr.Type.GetInfo(AST.TypeInfos);
+                    var label = varl.WorkingName;
+                    var retInfo = fnn.RetType.GetInfo(AST.TypeInfos);
 
-                    result += GenerateExpr(fn, argExpr);
-                    result += $"lea rdi, [rsp+{offset+typeInfo.ByteSize.Pad(16)}]\n";
-                    result += $"lea rsi, [rsp]\n";
-                    result += $"mov rcx, {typeInfo.ByteSize}\n";
-                    result += $"rep movsb\n";
-                    result += $"add rsp, {offset+typeInfo.ByteSize.Pad(16)}\n";
+                    result += $"sub rsp, {retInfo.ByteSize.Pad(16)}\n";
+                    result += $"sub rsp, {fnn.ArgsPadSize + fnn.ArgsSize}\n";
+
+                    var args = new List<IExpr>(func.Args);
+
+                    for(int i = args.Count - 1; i >= 0; i--)
+                    {
+                        var argExpr = args[i];
+                        var offset = fnn.ArgsInternal[i].Offset;
+                        var typeInfo = argExpr.Type.GetInfo(AST.TypeInfos);
+
+                        result += GenerateExpr(fn, argExpr);
+                        result += $"lea rdi, [rsp+{offset+typeInfo.ByteSize.Pad(16)}]\n";
+                        result += $"lea rsi, [rsp]\n";
+                        result += $"mov rcx, {typeInfo.ByteSize}\n";
+                        result += $"rep movsb\n";
+                        result += $"add rsp, {offset+typeInfo.ByteSize.Pad(16)}\n";
+                    }
+
+                    result += $"call {label}\n";
+                    result += $"add rsp, {fnn.ArgsPadSize + fnn.ArgsSize}\n";
                 }
-
-                result += $"call {label}\n";
-                result += $"add rsp, {fnn.ArgsPadSize + fnn.ArgsSize}\n";
             }
 
-            var type = varl.Type.Copy();
+            bool first = true;
             foreach(var accessor in varl.Accessors)
             {
+                // HACK: Make more generic later
+                if(first && accessor is FuncAcc) { first = false; continue;  }
+                first = false;
+
                 var tinfo = type.GetInfo(AST.TypeInfos);
                 type.RemoveLastMod();
                 var info = type.GetInfo(AST.TypeInfos);
-
+            
                 if(accessor is PointerAcc)
                 {
                     result += $"pop rax\n";
@@ -554,7 +568,6 @@ public class Generator
                     result += $"mov rcx, {info.ByteSize}\n";
                     result += "rep movsb\n";
                 }
-                // HACK: Bounds checking
                 else if(accessor is ArrayAcc arr)
                 {
                     var oob = GetLabel("OutOfBounds");

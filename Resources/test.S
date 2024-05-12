@@ -1,10 +1,11 @@
 BITS 64
-extern ExitProcess
 extern malloc
 extern realloc
 extern calloc
 extern free
 extern printf
+extern ExitProcess
+extern scanf
 section .data
 $OutOfBounds: db "Attempted to get item %d of an array with length %d",0xA,0
 $gclen: dq -1
@@ -101,11 +102,11 @@ ret
 main:
 push rbp
 mov rbp, rsp
-sub rsp, 32
+sub rsp, 16
 call $gcframe
 sub rsp, 16
-mov QWORD [rsp+8], 10
-mov rcx, 10
+mov QWORD [rsp+8], 0
+mov rcx, 0
 mov rdx, 8
 sub rsp, 32
 call calloc
@@ -113,173 +114,13 @@ add rsp, 32
 mov [rsp], rax
 mov r12, rax
 call $gcpush
-mov r12, [rsp]
-push 0
-push 1
-lea rsi, [rsp]
-lea rdi, [r12 + 0]
-mov rcx, 8
-rep movsb
-add rsp, 16
-mov r12, [rsp]
-push 0
-push 2
-lea rsi, [rsp]
-lea rdi, [r12 + 8]
-mov rcx, 8
-rep movsb
-add rsp, 16
-mov r12, [rsp]
-push 0
-push 3
-lea rsi, [rsp]
-lea rdi, [r12 + 16]
-mov rcx, 8
-rep movsb
-add rsp, 16
-mov r12, [rsp]
-push 0
-push 4
-lea rsi, [rsp]
-lea rdi, [r12 + 24]
-mov rcx, 8
-rep movsb
-add rsp, 16
-mov r12, [rsp]
-push 0
-push 5
-lea rsi, [rsp]
-lea rdi, [r12 + 32]
-mov rcx, 8
-rep movsb
-add rsp, 16
-mov r12, [rsp]
-push 0
-push 6
-lea rsi, [rsp]
-lea rdi, [r12 + 40]
-mov rcx, 8
-rep movsb
-add rsp, 16
-mov r12, [rsp]
-push 0
-push 7
-lea rsi, [rsp]
-lea rdi, [r12 + 48]
-mov rcx, 8
-rep movsb
-add rsp, 16
-mov r12, [rsp]
-push 0
-push 8
-lea rsi, [rsp]
-lea rdi, [r12 + 56]
-mov rcx, 8
-rep movsb
-add rsp, 16
-mov r12, [rsp]
-push 0
-push 9
-lea rsi, [rsp]
-lea rdi, [r12 + 64]
-mov rcx, 8
-rep movsb
-add rsp, 16
-mov r12, [rsp]
-push 0
-push 10
-lea rsi, [rsp]
-lea rdi, [r12 + 72]
-mov rcx, 8
-rep movsb
-add rsp, 16
 pop rax
 mov [rbp-16], rax
 pop rax
 mov [rbp-16+8], rax
-mov QWORD [rbp-24], 0
-mov QWORD [rbp-32], 0
-_do$$$1:
-push 0
-push QWORD [rbp-24+0]
-push QWORD [rbp-16+8]
-push QWORD [rbp-16+0]
-lea rsi, [rsp+8]
-sub rsp, 16
-lea rdi, [rsp]
-mov rcx, 8
-rep movsb
-lea rsi, [rsp]
-lea rdi, [rsp+16]
-mov rcx, 16
-rep movsb
 add rsp, 16
-mov rax, [rsp+16]
-mov rbx, [rsp]
-add rsp, 16
-cmp rax, rbx
-mov rax, 1
-jl _temp$$$2
-mov rax, 0
-_temp$$$2:
-mov [rsp], rax
-mov rax, [rsp]
-add rsp, 16
-cmp rax, 1
-jne _endwhile$$$0
-call $gcframe
 push 0
-push QWORD [rbp-32+0]
-push QWORD [rbp-16+8]
-push QWORD [rbp-16+0]
 push 0
-push QWORD [rbp-24+0]
-pop rbx
-add rsp, 8
-pop rax
-pop rcx
-cmp rbx, rcx
-jge _OutOfBounds$$$3
-cmp rbx, 0
-jge _InBounds$$$4
-_OutOfBounds$$$3:
-mov r8, rcx
-mov rdx, rbx
-mov rcx, $OutOfBounds
-call $error
-_InBounds$$$4:
-lea rsi, [rax+rbx*8]
-sub rsp, 16
-lea rdi, [rsp]
-mov rcx, 8
-rep movsb
-mov rax, [rsp+16]
-mov rbx, [rsp]
-add rsp, 16
-add rax, rbx
-mov [rsp], rax
-lea rax, [rbp-32]
-pop rbx
-mov [rax], rbx
-add rsp, 8
-push 0
-push QWORD [rbp-24+0]
-push 0
-push 1
-mov rax, [rsp+16]
-mov rbx, [rsp]
-add rsp, 16
-add rax, rbx
-mov [rsp], rax
-lea rax, [rbp-24]
-pop rbx
-mov [rax], rbx
-add rsp, 8
-call $gcclear
-jmp _do$$$1
-_endwhile$$$0:
-push 0
-push QWORD [rbp-32+0]
 lea rdi, [rbp+16]
 lea rsi, [rsp]
 mov rcx, 8

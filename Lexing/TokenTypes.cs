@@ -19,6 +19,7 @@ public enum TokenType
     Else,
     While,
     Do,
+    From,
 
 
     Plus, Minus, Mul, Div, Mod,

@@ -1,10 +1,9 @@
+cfn cprintf from printf(int[] fmt, *) int
+cfn cscanf from scanf(int[] fmt) int
+
 fn main() int {
-    let int[] arr = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-    let int counter = 0
-    let int sum = 0
-    while counter < arr.len {
-        mut sum = sum + arr[counter]
-        mut counter = counter + 1
-    }
-    ret sum
+    let int[] fmt = []
+    call cprintf(fmt, 1, 2, 3)
+
+    ret 0
 }

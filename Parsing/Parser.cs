@@ -44,8 +44,86 @@ public class Parser
                 // else return;
                 continue;
             }
+            if(Peek().Is(TokenType.Cfn))
+            {
+                var cfn = ParseCFn();
+                if(cfn is not null) { AST.CFndefs.Add(cfn); }
+                else 
+                {
+                    throw new System.Exception("fuck you");
+                }
+                continue;
+            }
             return;
         }
+    }
+
+    public CFndefNode? ParseCFn()
+    {
+        var origin = Pop();
+
+        if(!Peek().Is(TokenType.Id)) 
+        { Report(Error.Expected([TokenType.Id], Peek())); return null; }
+
+        var name = Pop();
+        var cname = (Token?)null;
+
+        if(!Peek().Is(TokenType.LParen, TokenType.From)) 
+        { Report(Error.Expected([TokenType.LParen, TokenType.From], Peek())); return null; }
+
+        if(Peek().Is(TokenType.From))
+        {
+            _ = Pop(); // from
+            if(!Peek().Is(TokenType.Id)) 
+            { Report(Error.Expected([TokenType.Id], Peek())); return null; }
+            cname = Pop();
+        }
+
+        if(!Peek().Is(TokenType.LParen)) 
+        { Report(Error.Expected([TokenType.LParen], Peek())); return null; }
+
+        _ = Pop();
+
+        List<(VType? type, Token? name, bool vararg)> args = new();
+        while(!Peek().Is(TokenType.RParen))
+        {
+            if(!Peek().Is(TokenType.Id, TokenType.Mul)) 
+            { Report(Error.Expected([TokenType.Id, TokenType.Mul], Peek())); return null; }
+
+            if(Peek().Is(TokenType.Mul))
+            {
+                _ = Pop();
+                args.Add((null, null, true));
+            }
+            else
+            {
+                var argType = ParseType();
+                if(argType is null) { return null; }
+
+                var argName = (Token?)null;
+
+                if(Peek().Is(TokenType.Id)) 
+                { argName = Pop(); }
+
+                args.Add((argType, argName, false));
+            }
+
+            if(Peek().Is(TokenType.RParen)) continue;
+            else if(Peek().Is(TokenType.Comma)) 
+            {
+                _ = Pop();
+                if(Peek().Is(TokenType.RParen)) { Report(Error.Expected([TokenType.Id], Peek())); return null; }
+            }
+            else { Report(Error.Expected([TokenType.Comma, TokenType.RParen], Peek())); return null; }
+        }
+
+        _ = Pop();
+
+        var type = VType.Void;
+        var typeT = (Token?)null;
+        if(Peek().Is(TokenType.Id)) { typeT = Peek(); type = ParseType(); }
+
+        return new CFndefNode(origin, name, cname, args, type, typeT);
     }
 
     public FndefNode? ParseFn()

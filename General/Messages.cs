@@ -121,7 +121,12 @@ namespace EdComp.Analysis.Msg
         new Message(
             $"Cannot use a variable-sized array as a fixed-sized one",
             pos);
-        //
+
+        public static Message InvalidVarargPosition(Token pos) =>
+        new Message(
+            $"Variadic argument can only appear once at the very end",
+            pos);
+
         // public static Message InvalidMutDest(Token pos) =>
         // new Message(
         //     $"Cannot use a variable-sized array as a fixed-sized one",

@@ -10,6 +10,8 @@ public interface VTypeMod
 
     public static VFunc Fn(params VType[] args) => new VFunc() { Args = args.ToList() };
     public static VFunc Fn(IEnumerable<VType> args) => new VFunc() { Args = args.ToList() };
+    public static VFunc CFn(params VType[] args) => new VFunc() { CFunc = true, Args = args.ToList() };
+    public static VFunc CFn(IEnumerable<VType> args) => new VFunc() { CFunc = true, Args = args.ToList() };
     public static VArray Arr() => new VArray();
     public static VArray Arr(int size) => new VArray(size);
     public static VPointer Pointer() => new VPointer();
@@ -23,6 +25,7 @@ public class VFunc : VTypeMod
         this.Args.Select((a, i) => a == func.Args[i]).All(b => b);
 
     public List<VType> Args = new();
+    public bool CFunc = false;
 
     public override string ToString() { return "(" + string.Join(", ", Args) + ")"; }
 }
@@ -69,6 +72,7 @@ public class VType
     public static VType Int => new("int");
     public static VType Bool => new("bool");
     public static VType Void => new("void");
+    public static VType VARARGS => new("$$$VARARGS$$$");
 
     public bool Valid;
     public string Name;
@@ -108,5 +112,10 @@ public class VType
 
     public bool Is<T>() where T : VTypeMod => Mods.Count > 0 && Mods.Last() is T;
     public bool Is<T>(out T mod) where T : VTypeMod 
-    { mod = (T)Mods.LastOrDefault(); return Mods.Count > 0 && Mods.Last() is T; }
+    { 
+        var m = Mods.LastOrDefault();
+        if(m is null || m is T) mod = (T)m;
+        else mod = default;
+        return Mods.Count > 0 && Mods.Last() is T; 
+    }
 }

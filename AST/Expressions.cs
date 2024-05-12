@@ -33,6 +33,7 @@ public class FuncAcc : IAccessor
 {
     public string Label => "function";
     public List<IExpr> Args = new();
+    public bool C = false;
 
     public FuncAcc() : this(new List<IExpr>()) {}
     public FuncAcc(IEnumerable<IExpr> args) { Args = args.ToList(); }

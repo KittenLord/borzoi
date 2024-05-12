@@ -88,6 +88,50 @@ public class Analyzer
 
     private bool FigureOutTypesAndStuff()
     {
+        foreach(var cfn in AST.CFndefs)
+        {
+            if(WIdExists(cfn.Name, out var def)) 
+            { 
+                Report(Error.AlreadyExists(cfn.Name, def, cfn.Origin));
+                return false;
+            }
+
+            var type = cfn.RetType.Copy();
+            var mod = VTypeMod.CFn(cfn.Args.Select(a => 
+                a.vararg ? VType.VARARGS : a.Type!));
+            type.Mods.Add(mod);
+
+            if(mod.Args.Any(a => a == VType.VARARGS))
+            {
+                for(int i = 0; i < mod.Args.Count - 1; i++)
+                {
+                    if(mod.Args[i] == VType.VARARGS)
+                    {
+                        Report(Error.InvalidVarargPosition(cfn.Origin));
+                        return false;
+                    }
+                }
+            }
+
+            foreach(var argt in mod.Args)
+            {
+                if(argt == VType.VARARGS) continue;
+                if(!TypeExists(argt.Name, out _))
+                {
+                    Report(Error.UnknownType(argt.Name, cfn.Origin));
+                    return false;
+                }
+            }
+
+            if(cfn.RetTypeT is not null && !TypeExists(type.Name, out _))
+            {
+                Report(Error.UnknownType(type.Name, cfn.RetTypeT));
+                return false;
+            }
+
+            Identifiers.Add(new Identifier(cfn.Name, cfn.Name, type, cfn.Origin));
+        }
+
         foreach(var fn in AST.Fndefs)
         {
             if(WIdExists(fn.Name, out var def)) 
@@ -97,7 +141,17 @@ public class Analyzer
             }
 
             var type = fn.RetType.Copy();
-            type.Mods.Add(VTypeMod.Fn(fn.Args.Select(a => a.Type)));
+            var mod = VTypeMod.Fn(fn.Args.Select(a => a.Type));
+            type.Mods.Add(mod);
+
+            foreach(var argt in mod.Args)
+            {
+                if(!TypeExists(argt.Name, out _))
+                {
+                    Report(Error.UnknownType(argt.Name, fn.Origin));
+                    return false;
+                }
+            }
 
             if(fn.RetTypeT is not null && !TypeExists(type.Name, out _))
             {
@@ -202,15 +256,28 @@ public class Analyzer
                         return VType.Invalid;
                     }
 
-                    if(funcProto.Args.Count != func.Args.Count)
+                    var isVarArg = funcProto.Args.Count > 0 &&
+                                   funcProto.Args.Last() == VType.VARARGS;
+                    if(funcProto.Args.Count != func.Args.Count && !isVarArg)
                     {
                         Report(Error.FnCallArgsCount(funcProto.Args.Count, func.Args.Count));
                         return VType.Invalid;
                     }
 
-                    for(int i = 0; i < funcProto.Args.Count; i++)
+                    if(isVarArg && func.Args.Count - funcProto.Args.Count < -1)
+                    {
+                        Report(Error.FnCallArgsCount(funcProto.Args.Count, func.Args.Count));
+                        return VType.Invalid;
+                    }
+
+                    for(int i = 0; i < func.Args.Count; i++)
                     {
                         var argType = FigureOutTheTypeOfAExpr(prefix, func.Args[i], func.Args[i].Type);
+                        if(i >= funcProto.Args.Count) continue;
+                        if(i >= funcProto.Args.Count - 1 && 
+                           funcProto.Args.Count > 0 && 
+                           funcProto.Args.Last() == VType.VARARGS) 
+                            continue;
                         if(argType != funcProto.Args[i])
                         {
                             Report(Error.FnCallArgType(i, funcProto.Args[i], argType));
@@ -283,9 +350,13 @@ public class Analyzer
             if(arr.Elems.Count <= 0 && 
                hint != VType.Invalid &&
                hint.Is<VArray>())
-                return hint.Copy();
+            {
+                arr.Type = hint.Copy();
+                return arr.Type;
+            }
 
             // Not enough information to infer the type from
+            // TODO: I don't remember what this means, seems error prone
             if(arr.Elems.Count <= 0)
             { 
                 if(!hint.Valid)
@@ -295,6 +366,7 @@ public class Analyzer
 
                 hint = hint.Copy();
                 hint.Mods.Add(VTypeMod.Arr());
+                arr.Type = hint;
                 return hint;
             }
 

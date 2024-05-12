@@ -22,6 +22,37 @@ public class StackVar {
     }
 }
 
+public class CFndefNode
+{
+    public string Name => NameT.Value;
+    public string CName => CNameT?.Value ?? Name;
+
+    public List<(VType? Type, string? Name, bool vararg)> Args => 
+        ArgsT.Select(a => (a.Type, a.Name?.Value, a.vararg))
+             .ToList();
+
+    public Token Origin;
+    public Token NameT;
+    public Token? CNameT;
+    public List<(VType? Type, Token? Name, bool vararg)> ArgsT;
+    public VType RetType;
+    public Token? RetTypeT;
+
+    public CFndefNode(Token origin, Token name, Token? cname, List<(VType? type, Token? name, bool vararg)> args, VType retType, Token? retTypeT)
+    {
+        Origin = origin;
+        NameT = name;
+        CNameT = cname;
+        ArgsT = args;
+        RetType = retType;
+        RetTypeT = retTypeT;
+        ArgsT = args;
+    }
+
+    public override string ToString() 
+    { return $"cfn {Name}{(CNameT is not null ? $" ({CName})" : "")} :: ({string.Join(" , ", Args.Select(a => a.vararg ? "*" : $"{(a.Name ?? "---")} :: {a.Type}"))}) -> {(RetType)}\n"; }
+}
+
 public class FndefNode : IContainer
 {
     public string Name => NameT.Value;
@@ -99,14 +130,17 @@ public class BlockNode : IContainer
 public class AST
 {
     public List<FndefNode> Fndefs;
+    public List<CFndefNode> CFndefs;
 
     public Dictionary<string, TypeInfo> TypeInfos;
 
     public AST()
     {
         Fndefs = new();
+        CFndefs = new();
         TypeInfos = new();
     }
 
-    public override string ToString() { return string.Join("\n", Fndefs); }
+    public override string ToString() { return 
+        $"{string.Join("\n", Fndefs)}\n\n{string.Join("\n", CFndefs)}"; }
 }
