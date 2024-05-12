@@ -202,8 +202,18 @@ mov QWORD [rbp-32], 0
 _do$$$1:
 push 0
 push QWORD [rbp-24+0]
-push 0
-push 10
+push QWORD [rbp-16+8]
+push QWORD [rbp-16+0]
+lea rsi, [rsp+8]
+sub rsp, 16
+lea rdi, [rsp]
+mov rcx, 8
+rep movsb
+lea rsi, [rsp]
+lea rdi, [rsp+16]
+mov rcx, 16
+rep movsb
+add rsp, 16
 mov rax, [rsp+16]
 mov rbx, [rsp]
 add rsp, 16

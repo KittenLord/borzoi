@@ -46,13 +46,13 @@ public class VPointer : VTypeMod
     public VPointer() {}
 }
 
-
+// TODO: Readonly members (can't set, or create pointers to)
 public class TypeInfo
 {
     public int ByteSize { get; set; }
     public int Alignment { get; set; }
 
-    public List<(string Name, VType Type, int offset)> Members = new();
+    public List<(string Name, VType Type, int Offset)> Members = new();
 
     public TypeInfo(int bs, int al = -1) { ByteSize = bs; Alignment = al < 0 ? ByteSize : al; }
 

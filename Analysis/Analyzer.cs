@@ -247,6 +247,18 @@ public class Analyzer
 
                     type.RemoveLastMod();
                 }
+                else if(accessor is MemberAcc mAcc)
+                {
+                    var info = type.GetInfo(TypeInfos);
+                    var member = info.Members.Find(m => m.Name == mAcc.Member);
+                    if(!info.Members.Any(m => m.Name == mAcc.Member))
+                    {
+                        Report(Error.CantAccess(type, accessor));
+                        return VType.Invalid;
+                    }
+
+                    type = member.Type;
+                }
                 else throw new System.Exception();
             }
             return type;

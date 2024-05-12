@@ -540,6 +540,7 @@ public class Generator
             var type = varl.Type.Copy();
             foreach(var accessor in varl.Accessors)
             {
+                var tinfo = type.GetInfo(AST.TypeInfos);
                 type.RemoveLastMod();
                 var info = type.GetInfo(AST.TypeInfos);
 
@@ -587,6 +588,29 @@ public class Generator
                     result += $"mov rcx, {info.ByteSize}\n";
                     result += "rep movsb\n";
                 }
+                else if(accessor is MemberAcc mAcc)
+                {
+                    var member = tinfo.Members.Find(m => m.Name == mAcc.Member);
+                    var minfo = member.Type.GetInfo(AST.TypeInfos);
+                    var msize = minfo.ByteSize.Pad(16);
+                    var tsize = tinfo.ByteSize.Pad(16);
+                    result += $"lea rsi, [rsp+{member.Offset}]\n";
+                    result += $"sub rsp, {msize}\n";
+                    result += $"lea rdi, [rsp]\n";
+                    result += $"mov rcx, {minfo.ByteSize}\n";
+                    result += "rep movsb\n";
+
+                    result += $"lea rsi, [rsp]\n";
+                    // We cover the space of newly allocated member, the
+                    // original aggregate type, and then add enough space
+                    // to store the member
+                    // This is verbose (m+t-m), but I think it's needed here
+                    result += $"lea rdi, [rsp+{msize+tsize-msize}]\n";
+                    result += $"mov rcx, {msize}\n";
+                    result += "rep movsb\n";
+                    result += $"add rsp, {msize+tsize-msize}\n";
+                }
+                else throw new System.Exception("peepee poopoo");
             }
 
         }
@@ -682,6 +706,7 @@ public class Generator
             }
             else if(accessor is ArrayAcc arrAcc)
             {
+                // TODO: OOB checking
                 result += "mov rax, [rax]\n";
                 result += "mov r12, rax\n";
                 result += GenerateExpr(fn, arrAcc.Index);
@@ -690,6 +715,11 @@ public class Generator
 
                 result += $"lea rax, [rax+rbx*{info.ByteSize}]\n";
                 result += $"add rsp, 16\n";
+            }
+            else if(accessor is MemberAcc mAcc)
+            {
+                var member = info.Members.Find(m => m.Name == mAcc.Member);
+                result += $"add rax, {member.Offset}\n";
             }
             else throw new System.Exception("SHIIIT");
         }
