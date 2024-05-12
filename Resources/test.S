@@ -6,9 +6,9 @@ extern calloc
 extern free
 extern printf
 section .data
-$OutOfBounds: db "Attempted to get item %d of an array with length %d %d",0xA,0
+$OutOfBounds: db "Attempted to get item %d of an array with length %d",0xA,0
 $gclen: dq -1
-$gccap: dq 128
+$gccap: dq 4
 $gcptr: dq 0
 section .text
 global _start
@@ -16,7 +16,7 @@ _start:
 and rsp, -32
 mov rbp, rsp
 sub rsp, 32
-mov rcx, 1024
+mov rcx, 32
 call malloc
 mov [rel $gcptr], rax
 sub rsp, 32
@@ -98,11 +98,15 @@ ret
 main:
 push rbp
 mov rbp, rsp
-sub rsp, 32
-call $gcframe
 sub rsp, 16
-mov QWORD [rsp+8], 4
-mov rcx, 4
+call $gcframe
+push 0
+push 1
+mov rax, [rsp]
+add rsp, 16
+sub rsp, 16
+mov QWORD [rsp+8], rax
+mov rcx, rax
 mov rdx, 8
 sub rsp, 32
 call calloc
@@ -110,85 +114,50 @@ add rsp, 32
 mov [rsp], rax
 mov r12, rax
 call $gcpush
-mov r12, [rsp]
-push 0
-push 1
-lea rsi, [rsp]
-lea rdi, [r12 + 0]
-mov rcx, 8
-rep movsb
-add rsp, 16
-mov r12, [rsp]
-push 0
-push 2
-lea rsi, [rsp]
-lea rdi, [r12 + 8]
-mov rcx, 8
-rep movsb
-add rsp, 16
-mov r12, [rsp]
-push 0
-push 3
-lea rsi, [rsp]
-lea rdi, [r12 + 16]
-mov rcx, 8
-rep movsb
-add rsp, 16
-mov r12, [rsp]
-push 0
-push 4
-lea rsi, [rsp]
-lea rdi, [r12 + 24]
-mov rcx, 8
-rep movsb
-add rsp, 16
 pop rax
 mov [rbp-16], rax
 pop rax
 mov [rbp-16+8], rax
-push QWORD [rbp-16+8]
-push QWORD [rbp-16+0]
 push 0
-push 0
-pop rbx
-add rsp, 8
-pop rax
-add rsp, 8
-mov rcx, [rsp+8]
-cmp rbx, rcx
-jge _OutOfBounds$$$0
-cmp rbx, 0
-jge _InBounds$$$1
-_OutOfBounds$$$0:
-mov r8, rcx
-mov rdx, rcx
-mov rcx, [rel $OutOfBounds]
-call $error
-_InBounds$$$1:
-lea rsi, [rax+rbx*8]
+push 1
+mov rax, [rsp]
+add rsp, 16
 sub rsp, 16
-lea rdi, [rsp]
-mov rcx, 8
-rep movsb
-lea rdi, [rbp+16]
+mov QWORD [rsp+8], rax
+mov rcx, rax
+mov rdx, 8
+sub rsp, 32
+call calloc
+add rsp, 32
+mov [rsp], rax
+mov r12, rax
+call $gcpush
+lea rax, [rbp-16]
 lea rsi, [rsp]
-mov rcx, 8
+mov rdi, rax
+mov rcx, 16
 rep movsb
-call $gcclear
-mov rsp, rbp
-pop rbp
-ret
-mov QWORD [rbp-24], 0
+add rsp, 16
 push 0
-push 0
-lea rdi, [rbp+16]
+push 1
+mov rax, [rsp]
+add rsp, 16
+sub rsp, 16
+mov QWORD [rsp+8], rax
+mov rcx, rax
+mov rdx, 8
+sub rsp, 32
+call calloc
+add rsp, 32
+mov [rsp], rax
+mov r12, rax
+call $gcpush
+lea rax, [rbp-16]
 lea rsi, [rsp]
-mov rcx, 8
+mov rdi, rax
+mov rcx, 16
 rep movsb
-call $gcclear
-mov rsp, rbp
-pop rbp
-ret
+add rsp, 16
 call $gcclear
 mov rsp, rbp
 pop rbp

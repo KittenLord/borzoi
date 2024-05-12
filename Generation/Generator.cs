@@ -29,7 +29,7 @@ public class Generator
         "extern printf\n" +
 
         "section .data\n" +
-        "$OutOfBounds: db \"Attempted to get item %d of an array with length %d %d\",0xA,0\n" +
+        "$OutOfBounds: db \"Attempted to get item %d of an array with length %d\",0xA,0\n" +
         "$gclen: dq -1\n" +
         $"$gccap: dq {Settings.GCStackSize}\n" +
         "$gcptr: dq 0\n" +
@@ -560,9 +560,9 @@ public class Generator
                     result += "pop rbx\n"; // Index
                     result += "add rsp, 8\n";
                     result += $"pop rax\n"; // Address
-                    result += "add rsp, 8\n";
-
-                    result += "mov rcx, [rsp+8]\n"; // Length
+                    // result += "add rsp, 8\n";
+                    result += "pop rcx\n"; // Length
+                    // result += "mov rcx, [rsp]\n"; // Length
                     result += "cmp rbx, rcx\n";
                     result += $"jge {oob}\n";
                     result += "cmp rbx, 0\n";
@@ -570,8 +570,10 @@ public class Generator
                     result += $"{oob}:\n";
 
                     result += "mov r8, rcx\n";
-                    result += "mov rdx, rcx\n";
-                    result += "mov rcx, [rel $OutOfBounds]\n";
+                    result += "mov rdx, rbx\n";
+
+                    // Pass the string by its adress kids
+                    result += "mov rcx, $OutOfBounds\n";
 
                     result += $"call $error\n";
                     result += $"{ib}:\n";

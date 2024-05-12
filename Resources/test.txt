@@ -1,8 +1,5 @@
-fn main() int {
-    let int[] arr = [1, 2, 3, 4]
-    ret arr[0]
-
-    let int i = 0
-
-    ret 0
+fn main() {
+    let int[] a = *1
+    mut a = *1
+    mut a = *1
 }
