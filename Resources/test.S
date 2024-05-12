@@ -48,7 +48,10 @@ mul rbx
 mov [rel $gccap], rax
 sub rsp, 32
 mov rcx, [rel $gcptr]
-mov rdx, [rel $gccap]
+mov rax, [rel $gccap]
+mov rbx, 8
+mul rax
+mov rdx, rax
 call realloc
 mov [rel $gcptr], rax
 add rsp, 32
@@ -98,15 +101,11 @@ ret
 main:
 push rbp
 mov rbp, rsp
-sub rsp, 16
+sub rsp, 32
 call $gcframe
-push 0
-push 1
-mov rax, [rsp]
-add rsp, 16
 sub rsp, 16
-mov QWORD [rsp+8], rax
-mov rcx, rax
+mov QWORD [rsp+8], 10
+mov rcx, 10
 mov rdx, 8
 sub rsp, 32
 call calloc
@@ -114,50 +113,171 @@ add rsp, 32
 mov [rsp], rax
 mov r12, rax
 call $gcpush
+mov r12, [rsp]
+push 0
+push 1
+lea rsi, [rsp]
+lea rdi, [r12 + 0]
+mov rcx, 8
+rep movsb
+add rsp, 16
+mov r12, [rsp]
+push 0
+push 2
+lea rsi, [rsp]
+lea rdi, [r12 + 8]
+mov rcx, 8
+rep movsb
+add rsp, 16
+mov r12, [rsp]
+push 0
+push 3
+lea rsi, [rsp]
+lea rdi, [r12 + 16]
+mov rcx, 8
+rep movsb
+add rsp, 16
+mov r12, [rsp]
+push 0
+push 4
+lea rsi, [rsp]
+lea rdi, [r12 + 24]
+mov rcx, 8
+rep movsb
+add rsp, 16
+mov r12, [rsp]
+push 0
+push 5
+lea rsi, [rsp]
+lea rdi, [r12 + 32]
+mov rcx, 8
+rep movsb
+add rsp, 16
+mov r12, [rsp]
+push 0
+push 6
+lea rsi, [rsp]
+lea rdi, [r12 + 40]
+mov rcx, 8
+rep movsb
+add rsp, 16
+mov r12, [rsp]
+push 0
+push 7
+lea rsi, [rsp]
+lea rdi, [r12 + 48]
+mov rcx, 8
+rep movsb
+add rsp, 16
+mov r12, [rsp]
+push 0
+push 8
+lea rsi, [rsp]
+lea rdi, [r12 + 56]
+mov rcx, 8
+rep movsb
+add rsp, 16
+mov r12, [rsp]
+push 0
+push 9
+lea rsi, [rsp]
+lea rdi, [r12 + 64]
+mov rcx, 8
+rep movsb
+add rsp, 16
+mov r12, [rsp]
+push 0
+push 10
+lea rsi, [rsp]
+lea rdi, [r12 + 72]
+mov rcx, 8
+rep movsb
+add rsp, 16
 pop rax
 mov [rbp-16], rax
 pop rax
 mov [rbp-16+8], rax
+mov QWORD [rbp-24], 0
+mov QWORD [rbp-32], 0
+_do$$$1:
 push 0
-push 1
+push QWORD [rbp-24+0]
+push 0
+push 10
+mov rax, [rsp+16]
+mov rbx, [rsp]
+add rsp, 16
+cmp rax, rbx
+mov rax, 1
+jl _temp$$$2
+mov rax, 0
+_temp$$$2:
+mov [rsp], rax
 mov rax, [rsp]
 add rsp, 16
+cmp rax, 1
+jne _endwhile$$$0
+call $gcframe
+push 0
+push QWORD [rbp-32+0]
+push QWORD [rbp-16+8]
+push QWORD [rbp-16+0]
+push 0
+push QWORD [rbp-24+0]
+pop rbx
+add rsp, 8
+pop rax
+pop rcx
+cmp rbx, rcx
+jge _OutOfBounds$$$3
+cmp rbx, 0
+jge _InBounds$$$4
+_OutOfBounds$$$3:
+mov r8, rcx
+mov rdx, rbx
+mov rcx, $OutOfBounds
+call $error
+_InBounds$$$4:
+lea rsi, [rax+rbx*8]
 sub rsp, 16
-mov QWORD [rsp+8], rax
-mov rcx, rax
-mov rdx, 8
-sub rsp, 32
-call calloc
-add rsp, 32
-mov [rsp], rax
-mov r12, rax
-call $gcpush
-lea rax, [rbp-16]
-lea rsi, [rsp]
-mov rdi, rax
-mov rcx, 16
+lea rdi, [rsp]
+mov rcx, 8
 rep movsb
+mov rax, [rsp+16]
+mov rbx, [rsp]
 add rsp, 16
+add rax, rbx
+mov [rsp], rax
+lea rax, [rbp-32]
+pop rbx
+mov [rax], rbx
+add rsp, 8
+push 0
+push QWORD [rbp-24+0]
 push 0
 push 1
-mov rax, [rsp]
+mov rax, [rsp+16]
+mov rbx, [rsp]
 add rsp, 16
-sub rsp, 16
-mov QWORD [rsp+8], rax
-mov rcx, rax
-mov rdx, 8
-sub rsp, 32
-call calloc
-add rsp, 32
+add rax, rbx
 mov [rsp], rax
-mov r12, rax
-call $gcpush
-lea rax, [rbp-16]
+lea rax, [rbp-24]
+pop rbx
+mov [rax], rbx
+add rsp, 8
+call $gcclear
+jmp _do$$$1
+_endwhile$$$0:
+push 0
+push QWORD [rbp-32+0]
+lea rdi, [rbp+16]
 lea rsi, [rsp]
-mov rdi, rax
-mov rcx, 16
+mov rcx, 8
 rep movsb
-add rsp, 16
+call $gcclear
+mov rsp, rbp
+pop rbp
+ret
 call $gcclear
 mov rsp, rbp
 pop rbp

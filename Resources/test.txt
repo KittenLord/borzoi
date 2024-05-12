@@ -1,5 +1,10 @@
-fn main() {
-    let int[] a = *1
-    mut a = *1
-    mut a = *1
+fn main() int {
+    let int[] arr = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    let int counter = 0
+    let int sum = 0
+    while counter < 10 {
+        mut sum = sum + arr[counter]
+        mut counter = counter + 1
+    }
+    ret sum
 }

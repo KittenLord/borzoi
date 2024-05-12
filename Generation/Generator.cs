@@ -87,7 +87,10 @@ public class Generator
 
         "sub rsp, 32\n" +
         $"mov {(Windows ? "rcx" : "rdi")}, [rel $gcptr]\n" +
-        $"mov {(Windows ? "rdx" : "rsi")}, [rel $gccap]\n" +
+        "mov rax, [rel $gccap]\n" +
+        $"mov rbx, {Settings.Bytes}\n" +
+        "mul rax\n" +
+        $"mov {(Windows ? "rdx" : "rsi")}, rax\n" +
         "call realloc\n" +
         "mov [rel $gcptr], rax\n" +
         "add rsp, 32\n" +
