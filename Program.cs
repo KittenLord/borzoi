@@ -60,6 +60,7 @@ public class Program
 
         ArgInfo files_arg = new ( "files", "File(-s) to be compiled" );
         List<string> filePaths = new();
+        List<string> libSearchPaths = new();
 
         string outputPath = "";
         string outputObjPath = "";
@@ -69,9 +70,15 @@ public class Program
         while(args.TryPeek(out _)) 
         {
             var arg = args.Pop();
-            if(arg == "--some-flag") 
+            if(arg == "--lib-search-path") 
             {
+                if(!args.TryPop(out var path))
+                {
+                    // TODO: Error
+                    return 1;
+                }
 
+                libSearchPaths.Add(path);
             }
             else
             {
@@ -161,13 +168,35 @@ public class Program
             return nasmProcess.ExitCode;
         }
 
+        // TODO: Alias links?
+        var links = parser.AST.Links;
+        var linksArg = string.Join(" ", links.Select(l => $"-l{l}"));
+
+        var libSearchPathsArg = string.Join(" ", libSearchPaths.Select(l => $"-L{l}"));
+
         var gccProcess = new Process();
-        gccProcess.StartInfo = new(
-            "gcc.exe", 
-            @$"{outputObjPath} --entry=_start -fPIC -nostartfiles{(platformWindows ? " -lkernel32" : "")} -o {outputPath}")
+        gccProcess.StartInfo = new("gcc.exe")
         {
             UseShellExecute = false
         };
+
+        // gccProcess.StartInfo.Arguments += " " + outputObjPath;
+        // gccProcess.StartInfo.Arguments += " " + "--entry=_start";
+        // gccProcess.StartInfo.Arguments += " " + "-fPIC";
+        // gccProcess.StartInfo.Arguments += " " + "-nostartfiles";
+        // gccProcess.StartInfo.Arguments += " " + libSearchPathsArg;
+        // gccProcess.StartInfo.Arguments += " " + linksArg;
+        // if(platformWindows)
+        //     gccProcess.StartInfo.Arguments += " " + "-lkernel32";
+        // gccProcess.StartInfo.Arguments += " " + "-o " + outputPath;
+        
+        gccProcess.StartInfo.Arguments = $"{outputObjPath} --entry=_start -fPIC -nostartfiles" +
+            " " + linksArg + $" -lgcc -lmsvcrt -lkernel32 -o {outputPath}" +
+            " -LResources/raylib/lib/ -IResources/raylib/include/ ";
+
+
+        System.Console.WriteLine($"{gccProcess.StartInfo.Arguments}");
+
         gccProcess.Start();
         gccProcess.WaitForExit();
 

@@ -1,5 +1,26 @@
-cfn printf(byte[], *) int
+link "raylib"
+link "opengl32"
+link "gdi32"
+link "winmm"
+link "shell32"
+link "user32"
+
+cfn InitWindow(int w, int h, byte[] title)
+cfn WindowShouldClose() bool
+cfn BeginDrawing()
+cfn EndDrawing()
+cfn ClearBackground(int color)
+cfn SetTargetFPS(int fps)
 
 fn main() {
-    call printf("peanits")
+    call InitWindow(800, 450, "Test")
+    call SetTargetFPS(60)
+
+    while !WindowShouldClose() {
+        call BeginDrawing()
+
+            call ClearBackground(0)
+
+        call EndDrawing()
+    }
 }
