@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using System.Linq;
-using EdComp.Lexing;
-using EdComp.ASTn;
+using Borzoi.Lexing;
+using Borzoi.ASTn;
 
-namespace EdComp.Parsing;
-using EdComp.Parsing.Msg;
+namespace Borzoi.Parsing;
+using Borzoi.Parsing.Msg;
 
 public class Parser
 {

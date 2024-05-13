@@ -1,10 +1,10 @@
 using System.Linq;
 using System.Collections.Generic;
-using EdComp.ASTn;
+using Borzoi.ASTn;
 using System.Collections.Generic;
 
-using EdComp.Analysis.Msg;
-namespace EdComp.Analysis;
+using Borzoi.Analysis.Msg;
+namespace Borzoi.Analysis;
 
 public class Identifier
 {

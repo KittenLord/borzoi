@@ -14,7 +14,7 @@ public class Message
     public override string ToString() { return $"{Msg}\nat {Attached?.ToString("")}"; }
 }
 
-namespace EdComp.Parsing.Msg
+namespace Borzoi.Parsing.Msg
 {
     public static class Error
     {
@@ -35,7 +35,7 @@ namespace EdComp.Parsing.Msg
     }
 }
 
-namespace EdComp.Lexing.Msg
+namespace Borzoi.Lexing.Msg
 {
     public static class Error
     {
@@ -51,7 +51,7 @@ namespace EdComp.Lexing.Msg
     }
 }
 
-namespace EdComp.Analysis.Msg
+namespace Borzoi.Analysis.Msg
 {
     // TODO: Add message positions for some errors that I was too lazy to implement
     public static class Error
@@ -111,7 +111,7 @@ namespace EdComp.Analysis.Msg
             $"The program does not contain a \"main\" function",
             new Token(TokenType.Illegal, "", 0, 0, 0));
 
-        public static Message CantAccess(VType type, EdComp.ASTn.IAccessor access) =>
+        public static Message CantAccess(VType type, Borzoi.ASTn.IAccessor access) =>
         new Message(
             $"Can't access value of type {type} using {access.Label} access",
             new Token(TokenType.Illegal, "", 0, 0, 0));

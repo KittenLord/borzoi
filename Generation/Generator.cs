@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
 
-using EdComp.ASTn;
+using Borzoi.ASTn;
 
-namespace EdComp.Generation;
+namespace Borzoi.Generation;
 
 public class Generator
 {

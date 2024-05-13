@@ -4,13 +4,13 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
-using EdComp.Lexing;
-using EdComp.Parsing;
-using EdComp.Analysis;
-using EdComp.ASTn;
-using EdComp.Generation;
+using Borzoi.Lexing;
+using Borzoi.Parsing;
+using Borzoi.Analysis;
+using Borzoi.ASTn;
+using Borzoi.Generation;
 
-namespace EdComp;
+namespace Borzoi;
 
 public class Program
 {

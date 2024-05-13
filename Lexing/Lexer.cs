@@ -2,8 +2,8 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 
-namespace EdComp.Lexing;
-using EdComp.Lexing.Msg;
+namespace Borzoi.Lexing;
+using Borzoi.Lexing.Msg;
 
 public class Lexer
 {
