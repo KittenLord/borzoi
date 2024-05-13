@@ -5,12 +5,9 @@ extern calloc
 extern free
 extern printf
 extern ExitProcess
-extern scanf
 section .data
-$STR_0$: db 37,100,0,0,0,0
-$STR_0$LEN: dq 2
-$STR_1$: db 72,101,114,101,32,105,115,32,121,111,117,114,32,110,117,109,98,101,114,44,32,98,117,116,32,98,101,116,116,101,114,58,32,37,100,0,0,0,0
-$STR_1$LEN: dq 35
+$STR_0$: db 72,101,108,108,111,44,32,87,111,114,108,100,33,0,0,0,0
+$STR_0$LEN: dq 13
 $OutOfBounds: db "Attempted to get item %d of an array with length %d",0xA,0
 $gclen: dq -1
 $gccap: dq 4
@@ -106,13 +103,9 @@ ret
 main:
 push rbp
 mov rbp, rsp
-sub rsp, 16
+sub rsp, 0
 call $gcframe
-mov QWORD [rbp-8], 0
 sub rsp, 16
-lea rax, [rbp-8]
-sub rsp, 16
-mov [rsp], rax
 mov rdi, [rel $STR_0$LEN]
 mov rsi, 1
 mov rdx, 1
@@ -130,57 +123,12 @@ mov rdi, r12
 mov rsi, $STR_0$
 mov rcx, [rel $STR_0$LEN]
 rep movsb
-mov rdx, [rsp+16]
-mov rcx, [rsp+0]
-sub rsp, 32
-call scanf
-add rsp, 64
-mov [rsp], rax
-add rsp, 16
-sub rsp, 16
-push 0
-push QWORD [rbp-8+0]
-push 0
-push 1
-mov rax, [rsp+16]
-mov rbx, [rsp]
-add rsp, 16
-add rax, rbx
-mov [rsp], rax
-mov rdi, [rel $STR_1$LEN]
-mov rsi, 1
-mov rdx, 1
-push rdi
-push 0
-add rdi, 4
-mov rcx, rdi
-sub rsp, 32
-call calloc
-add rsp, 32
-mov [rsp], rax
-mov r12, rax
-call $gcpush
-mov rdi, r12
-mov rsi, $STR_1$
-mov rcx, [rel $STR_1$LEN]
-rep movsb
-mov rdx, [rsp+16]
 mov rcx, [rsp+0]
 sub rsp, 32
 call printf
-add rsp, 64
+add rsp, 48
 mov [rsp], rax
 add rsp, 16
-push 0
-push QWORD [rbp-8+0]
-lea rdi, [rbp+16]
-lea rsi, [rsp]
-mov rcx, 8
-rep movsb
-call $gcclear
-mov rsp, rbp
-pop rbp
-ret
 call $gcclear
 mov rsp, rbp
 pop rbp
