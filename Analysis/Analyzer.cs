@@ -51,6 +51,7 @@ public class Analyzer
         Identifiers = new();
         Types = new();
         TypeInfos = new();
+        Success = true;
     }
 
     private void Report(string error, Token position) => Report(new Message(error, position));

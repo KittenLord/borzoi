@@ -6,8 +6,8 @@ extern free
 extern printf
 extern ExitProcess
 section .data
-$STR_0$: db 65,98,111,98,97,0,0,0,0
-$STR_0$LEN: dq 5
+$STR_0$: db 112,101,97,110,105,116,115,0,0,0,0
+$STR_0$LEN: dq 7
 $OutOfBounds: db "Attempted to get item %d of an array with length %d",0xA,0
 $gclen: dq -1
 $gccap: dq 4
