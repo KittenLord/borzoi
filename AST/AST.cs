@@ -131,6 +131,7 @@ public class AST
 {
     public List<FndefNode> Fndefs;
     public List<CFndefNode> CFndefs;
+    public List<string> Links;
 
     public Dictionary<string, TypeInfo> TypeInfos;
 
@@ -139,8 +140,9 @@ public class AST
         Fndefs = new();
         CFndefs = new();
         TypeInfos = new();
+        Links = new();
     }
 
     public override string ToString() { return 
-        $"{string.Join("\n", Fndefs)}\n\n{string.Join("\n", CFndefs)}"; }
+        $"{string.Join("\n", Fndefs)}\n\n{string.Join("\n", CFndefs)}\n\nlinks: [ {string.Join(", ", Links.Select(l => $"\"{l}\""))} ]"; }
 }

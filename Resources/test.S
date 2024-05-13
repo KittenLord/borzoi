@@ -6,8 +6,6 @@ extern free
 extern printf
 extern ExitProcess
 section .data
-$STR_0$: db 72,101,108,108,111,44,32,87,111,114,108,100,33,0,0,0,0
-$STR_0$LEN: dq 13
 $OutOfBounds: db "Attempted to get item %d of an array with length %d",0xA,0
 $gclen: dq -1
 $gccap: dq 4
@@ -105,30 +103,6 @@ push rbp
 mov rbp, rsp
 sub rsp, 0
 call $gcframe
-sub rsp, 16
-mov rdi, [rel $STR_0$LEN]
-mov rsi, 1
-mov rdx, 1
-push rdi
-push 0
-add rdi, 4
-mov rcx, rdi
-sub rsp, 32
-call calloc
-add rsp, 32
-mov [rsp], rax
-mov r12, rax
-call $gcpush
-mov rdi, r12
-mov rsi, $STR_0$
-mov rcx, [rel $STR_0$LEN]
-rep movsb
-mov rcx, [rsp+0]
-sub rsp, 32
-call printf
-add rsp, 48
-mov [rsp], rax
-add rsp, 16
 call $gcclear
 mov rsp, rbp
 pop rbp

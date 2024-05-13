@@ -1,5 +1,5 @@
-cfn printf(byte[] format, *) int
+link "aboba"
 
 fn main() {
-    call printf("Hello, World!")
+
 }

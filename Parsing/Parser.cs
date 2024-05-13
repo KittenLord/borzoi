@@ -54,8 +54,26 @@ public class Parser
                 }
                 continue;
             }
+            if(Peek().Is(TokenType.Link))
+            {
+                var link = ParseLink();
+                if(link is not null) { 
+                    if(!AST.Links.Contains(link)) 
+                        AST.Links.Add(link); }
+                else throw new System.Exception("fuck you again");
+                continue;
+            }
             return;
         }
+    }
+
+    public string? ParseLink()
+    {
+        _ = Pop();
+        if(!Peek().Is(TokenType.StrLit)) 
+        { Report(Error.Expected([TokenType.StrLit], Peek())); return null; }
+        
+        return Pop().Value;
     }
 
     public CFndefNode? ParseCFn()

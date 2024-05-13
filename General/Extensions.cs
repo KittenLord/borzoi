@@ -23,6 +23,7 @@ public static class Extensions
 
     public static int Pad(this int num, int pad)
     {
+        if(num == 0) return num;
         while(num % pad != 0) num++;
         return num;
     }

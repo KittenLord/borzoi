@@ -1,0 +1,23 @@
+cfn printf(byte[] fmt, *) int
+
+fn main() {
+    let int counter = 0
+    while counter < 100 {
+        mut counter = counter + 1
+
+        if counter % 5 == 0 {
+            if counter % 3 == 0 {
+                call printf("FizzBuzz\n")
+            }
+            else {
+                call printf("Fizz\n")
+            }
+        }
+        else if counter % 3 == 0 {
+            call printf("Buzz\n")
+        }
+        else {
+            call printf("%d\n", counter)
+        }
+    }
+}

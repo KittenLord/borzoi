@@ -458,7 +458,7 @@ public class Generator
                     TokenType.Minus => "sub rax, rbx\n",
                     TokenType.Mul => "xor rdx, rdx\nimul rbx\n",
                     TokenType.Div => "xor rdx, rdx\ncqo\nidiv rbx\n",
-                    TokenType.Mod => "xor rdx, rdx\ncqo\nidiv rbx\nmov rax, rdx",
+                    TokenType.Mod => "xor rdx, rdx\ncqo\nidiv rbx\nmov rax, rdx\n",
 
                     TokenType.Eq => $"cmp rax, rbx\nmov rax, 1\nje {label}\nmov rax, 0\n{label}:\n",
                     TokenType.Neq => $"cmp rax, rbx\nmov rax, 1\njne {label}\nmov rax, 0\n{label}:\n",
@@ -590,7 +590,7 @@ public class Generator
                         result += $"lea rsi, [rsp]\n";
                         result += $"mov rcx, {typeInfo.ByteSize}\n";
                         result += $"rep movsb\n";
-                        result += $"add rsp, {offset+typeInfo.ByteSize.Pad(16)}\n";
+                        result += $"add rsp, {typeInfo.ByteSize.Pad(16)}\n";
                     }
 
                     result += $"call {label}\n";
