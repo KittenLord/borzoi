@@ -332,6 +332,7 @@ public class Analyzer
         }
         if(expr is IntLit) return VType.Int;
         if(expr is BoolLit) return VType.Bool;
+        if(expr is StrLit) return VType.Byte.Modify(VTypeMod.Arr());
         if(expr is NegateOp negop)
         {
             var type = FigureOutTheTypeOfAExpr(prefix, negop.Expr, hint);
@@ -432,6 +433,7 @@ public class Analyzer
             binop.RightType = rightType;
             return result;
         }
+        throw new System.Exception("dunno");
         return VType.Invalid;
     }
 

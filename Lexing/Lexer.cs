@@ -110,8 +110,10 @@ public class Lexer
         Popc(); // Opening
         bool fail = false;
         System.Text.StringBuilder sb = new();
+        System.Text.StringBuilder sbtrue = new();
         while(!PeekPred("\"")) 
         {
+            sbtrue.Append(Text.Peek());
             if(PeekPred("\n"))
             {
                 fail = true;
@@ -137,8 +139,8 @@ public class Lexer
         if(PeekPred("\"")) Popc();
         else fail = true;
 
-        if(fail) return Put(TokenType.Illegal, sb.ToString());
-        var token = Put(TokenType.StrLit, sb.ToString());
+        if(fail) return Put(TokenType.Illegal, sbtrue.ToString());
+        var token = Put(TokenType.StrLit, sbtrue.ToString());
         token.StringValue = sb.ToString();
         return token;
     }

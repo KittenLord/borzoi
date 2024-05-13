@@ -1,5 +1,9 @@
 cfn read from scanf(byte[] format, *) int
+cfn print from printf(byte[] format, *) int
 
 fn main() int {
-
+    let int a = 0
+    call read("%d", @a)
+    call print("Here is your number, but better: %d", a + 1)
+    ret a
 }

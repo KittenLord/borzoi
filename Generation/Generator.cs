@@ -7,14 +7,43 @@ namespace EdComp.Generation;
 
 public class Generator
 {
+
     private AST AST;
     private bool Windows;
     private bool Optimize;
+
+    private Dictionary<string, int> StringLiterals;
+    private void AddStringLiteral(string s)
+    {
+        StringLiterals[s] = LastString;
+        var bytes = System.Text.Encoding.UTF8.GetBytes(s)!;
+
+        var label = $"$STR_{LastString}$";
+        StringData += 
+        $"{label}: db {string.Join("", bytes.Select(b => b.ToString() + ","))}0,0,0,0\n";
+        StringData += $"{label}LEN: dq {bytes.Length}\n";
+        LastString++;
+    }
+
+    private string GetStringLabel(string str)
+    {
+        if(StringLiterals.ContainsKey(str)) 
+            return $"$STR_{StringLiterals[str]}$";
+        AddStringLiteral(str);
+        return $"$STR_{StringLiterals[str]}$";
+    }
+
+    private int LastString;
+    private string StringData;
+
     public Generator(AST ast, bool windows, bool optimize)
     {
         AST = ast;
         Windows = windows;
         Optimize = optimize;
+        LastString = 0;
+        StringData = "";
+        StringLiterals = new();
     }
 
     public string Generate()
@@ -35,6 +64,7 @@ public class Generator
         string.Join("", externFunctions.Select(fn => $"extern {fn}\n")) +
 
         "section .data\n" +
+        "{0}" +
         "$OutOfBounds: db \"Attempted to get item %d of an array with length %d\",0xA,0\n" +
         "$gclen: dq -1\n" +
         $"$gccap: dq {Settings.GCStackSize}\n" +
@@ -210,7 +240,7 @@ public class Generator
             result += fnBoilerplate;
         }
 
-
+        result = string.Format(result, StringData);
 
         return result;
     }
@@ -453,6 +483,27 @@ public class Generator
         {
             result += $"push 0\npush {(boolLit.Value ? 1 : 0)}\n";
         }
+        else if(expr is StrLit strlit)
+        {
+            var label = GetStringLabel(strlit.Value);
+            var lenlabel = label + "LEN";
+            result += $"mov rdi, [rel {lenlabel}]\n";
+            result += "mov rsi, 1\nmov rdx, 1\n";
+            result += $"push rdi\n";
+            result += "push 0\n";
+            result += "add rdi, 4\n"; // null termination
+                if(Windows) result += "mov rcx, rdi\n";
+            result += "sub rsp, 32\n";
+            result += "call calloc\n";
+            result += "add rsp, 32\n";
+            result += "mov [rsp], rax\n";
+            result += "mov r12, rax\n";
+            result += "call $gcpush\n";
+            result += "mov rdi, r12\n";
+            result += $"mov rsi, {label}\n";
+            result += $"mov rcx, [rel {lenlabel}]\n";
+            result += "rep movsb\n";
+        }
         else if(expr is NegateOp negop)
         {
             result += GenerateExpr(fn, negop.Expr);
@@ -547,6 +598,9 @@ public class Generator
                 }
                 else if((cfn = AST.CFndefs.Find(cf => cf.Name == varl.Name)) is not null)
                 {
+                    var retTypeInfo = cfn.RetType.GetInfo(AST.TypeInfos);
+                    result += $"sub rsp, {retTypeInfo.ByteSize.Pad(16)}\n";
+
                     if(Windows)
                     {
                         // Win 64
@@ -556,6 +610,8 @@ public class Generator
                         // 2. Calculate stack frame size
                         // 3. Assign arguments from right to left
 
+                        int[] nonPointerSizes = [1, 2, 4, 8];
+                        bool returnFitsInRegister = nonPointerSizes.Contains(retTypeInfo.ByteSize);
                         int restoreStack = 32;
 
                         Queue<int> offsets = new();
@@ -584,7 +640,6 @@ public class Generator
                         {
                             var offset = offsets.Sum() + extraOffset;
                             var argInfo = func.Args[i].Type.GetInfo(AST.TypeInfos);
-                            int[] nonPointerSizes = [1, 2, 4, 8];
                             var byPointer = !nonPointerSizes.Contains(argInfo.ByteSize);
                             if(func.Args[i].Type.Is<VArray>()) byPointer = false;
                             var op = byPointer ? "lea" : "mov";
@@ -610,6 +665,9 @@ public class Generator
                         result += "sub rsp, 32\n";
                         result += $"call {cfn.CName}\n";
                         result += $"add rsp, {restoreStack}\n";
+
+                        if(returnFitsInRegister) 
+                            result += $"mov [rsp], rax\n";
                     }
                     else
                     {
