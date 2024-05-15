@@ -170,6 +170,8 @@ public class Program
 
         // TODO: Alias links?
         var links = parser.AST.Links;
+        if(platformWindows && !links.Contains("kernel32"))
+            links.Add("kernel32");
         var linksArg = string.Join(" ", links.Select(l => $"-l{l}"));
 
         var libSearchPathsArg = string.Join(" ", libSearchPaths.Select(l => $"-L{l}"));
@@ -180,22 +182,22 @@ public class Program
             UseShellExecute = false
         };
 
-        // gccProcess.StartInfo.Arguments += " " + outputObjPath;
+
+        // NOTE: Learn more about linking/etc, I know too little
+        
+        void AddArgument(string s) =>
+            gccProcess.StartInfo.Arguments += " " + s + " ";
+
+        AddArgument(outputObjPath);
+        AddArgument(libSearchPathsArg);
+        AddArgument(linksArg);
+        AddArgument($"-o {outputPath}");
+
+        // string entry = platformWindows ? "main" : "_start";
         // gccProcess.StartInfo.Arguments += " " + "--entry=_start";
         // gccProcess.StartInfo.Arguments += " " + "-fPIC";
-        // gccProcess.StartInfo.Arguments += " " + "-nostartfiles";
-        // gccProcess.StartInfo.Arguments += " " + libSearchPathsArg;
-        // gccProcess.StartInfo.Arguments += " " + linksArg;
-        // if(platformWindows)
-        //     gccProcess.StartInfo.Arguments += " " + "-lkernel32";
-        // gccProcess.StartInfo.Arguments += " " + "-o " + outputPath;
-        
-        gccProcess.StartInfo.Arguments = $"{outputObjPath} --entry=_start -fPIC -nostartfiles" +
-            " " + linksArg + $" -lgcc -lmsvcrt -lkernel32 -o {outputPath}" +
-            " -LResources/raylib/lib/ -IResources/raylib/include/ ";
 
-
-        System.Console.WriteLine($"{gccProcess.StartInfo.Arguments}");
+        // System.Console.WriteLine($"{gccProcess.StartInfo.Arguments}");
 
         gccProcess.Start();
         gccProcess.WaitForExit();

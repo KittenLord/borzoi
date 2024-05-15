@@ -6,7 +6,7 @@ public class Token
 {
     public TokenType Type { get; private set; }
 
-    public string Value { get; private set; }
+    public string Value { get; set; }
     public int IntValue;
     public bool BoolValue;
     public string StringValue;

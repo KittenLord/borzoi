@@ -59,6 +59,9 @@ public class Generator
                 { externFunctions.Add(cfn.CName); }
         }
 
+        // I fucking hate windows
+        string entry = Windows ? "main" : "_start";
+
         string result = 
         "BITS 64\n" +
         string.Join("", externFunctions.Select(fn => $"extern {fn}\n")) +
@@ -75,8 +78,8 @@ public class Generator
         
 
 
-        "global _start\n" +
-        "_start:\n" +
+        $"global {entry}\n" +
+        $"{entry}:\n" +
         "and rsp, -32\n" +
         "mov rbp, rsp\n" +
         "sub rsp, 32\n" +
@@ -86,7 +89,7 @@ public class Generator
         "mov [rel $gcptr], rax\n" +
 
         "sub rsp, 32\n" +
-        "call main\n" +
+        "call _$main\n" +
         (Windows ? "mov rcx, [rsp]\ncall ExitProcess\n" : "") +
         "mov rbx, [rsp]\n" +
         "mov rax, 1\n" +
@@ -222,8 +225,11 @@ public class Generator
 
         foreach(var fn in AST.Fndefs)
         {
+            var fnName = fn.Name;
+            if(fnName == "main") fnName = "_$main";
+
             string fnBoilerplate = 
-            $"{fn.Name}:\n" +
+            $"{fnName}:\n" +
             "push rbp\n" +
             "mov rbp, rsp\n" +
             $"sub rsp, {fn.StackSize}\n" +
@@ -572,6 +578,8 @@ public class Generator
                 if((fnn = AST.Fndefs.Find(f => f.Name == varl.Name)) is not null)
                 {
                     var label = varl.WorkingName;
+                    if(label == "main") label = "_$main";
+
                     var retInfo = fnn.RetType.GetInfo(AST.TypeInfos);
 
                     result += $"sub rsp, {retInfo.ByteSize.Pad(16)}\n";

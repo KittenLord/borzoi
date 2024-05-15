@@ -1,9 +1,6 @@
 link "raylib"
-link "opengl32"
 link "gdi32"
 link "winmm"
-link "shell32"
-link "user32"
 
 cfn InitWindow(int w, int h, byte[] title)
 cfn WindowShouldClose() bool
@@ -12,14 +9,18 @@ cfn EndDrawing()
 cfn ClearBackground(int color)
 cfn SetTargetFPS(int fps)
 
+cfn printf(byte[], *) int
+
 fn main() {
-    call InitWindow(800, 450, "Test")
+    call printf("big POOPA Aboba")
+
+    call InitWindow(800, 450, "big POOPA Aboba")
     call SetTargetFPS(60)
 
     while !WindowShouldClose() {
         call BeginDrawing()
 
-            call ClearBackground(0)
+            call ClearBackground(1111111)
 
         call EndDrawing()
     }

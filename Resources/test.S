@@ -12,15 +12,15 @@ extern EndDrawing
 extern ClearBackground
 extern SetTargetFPS
 section .data
-$STR_0$: db 84,101,115,116,0,0,0,0
-$STR_0$LEN: dq 4
+$STR_0$: db 98,105,103,32,80,79,79,80,65,32,65,98,111,98,97,0,0,0,0
+$STR_0$LEN: dq 15
 $OutOfBounds: db "Attempted to get item %d of an array with length %d",0xA,0
 $gclen: dq -1
 $gccap: dq 4
 $gcptr: dq 0
 section .text
-global _start
-_start:
+global main
+main:
 and rsp, -32
 mov rbp, rsp
 sub rsp, 32
@@ -28,7 +28,7 @@ mov rcx, 32
 call malloc
 mov [rel $gcptr], rax
 sub rsp, 32
-call main
+call _$main
 mov rcx, [rsp]
 call ExitProcess
 mov rbx, [rsp]
@@ -106,11 +106,35 @@ sub rax, 1
 mov [rel $gclen], rax
 pop rbp
 ret
-main:
+_$main:
 push rbp
 mov rbp, rsp
 sub rsp, 0
 call $gcframe
+sub rsp, 16
+mov rdi, [rel $STR_0$LEN]
+mov rsi, 1
+mov rdx, 1
+push rdi
+push 0
+add rdi, 4
+mov rcx, rdi
+sub rsp, 32
+call calloc
+add rsp, 32
+mov [rsp], rax
+mov r12, rax
+call $gcpush
+mov rdi, r12
+mov rsi, $STR_0$
+mov rcx, [rel $STR_0$LEN]
+rep movsb
+mov rcx, [rsp+0]
+sub rsp, 32
+call printf
+add rsp, 48
+mov [rsp], rax
+add rsp, 16
 sub rsp, 0
 mov rdi, [rel $STR_0$LEN]
 mov rsi, 1
@@ -173,7 +197,7 @@ add rsp, 32
 add rsp, 0
 sub rsp, 0
 push 0
-push 0
+push 1111111
 mov rcx, [rsp+0]
 sub rsp, 32
 call ClearBackground
