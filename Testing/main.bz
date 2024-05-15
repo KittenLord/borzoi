@@ -1,0 +1,5 @@
+cfn printf(byte[], *) int
+
+fn main() {
+    call printf("Aboba")
+}
