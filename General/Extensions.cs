@@ -18,7 +18,7 @@ public static class Extensions
 
     public static string Indent(this string str)
     {
-        return string.Join("\n", str.Split("\n").Select(s => "\t" + s));
+        return string.Join("\n", str.Split("\n").Select(s => "    " + s));
     }
 
     public static int Pad(this int num, int pad)

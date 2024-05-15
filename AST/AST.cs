@@ -109,13 +109,15 @@ public class FndefNode : IContainer
 public class BlockNode : IContainer
 {
     public List<IStatement> Statements;
+    public bool Manual;
 
-    public BlockNode(List<IStatement> statements)
+    public BlockNode(List<IStatement> statements, bool manual)
     {
         Statements = statements;
+        Manual = manual;
     }
 
-    public override string ToString() { return string.Join("\n", Statements); }
+    public override string ToString() { return $"Block{(Manual ? " [MANUAL]" : "")}\n" + string.Join("\n", Statements).Indent(); }
     public BlockNode GetBlock() => this;
 
     public List<LetNode> GetVariables() 

@@ -18,7 +18,7 @@ public class Generator
         StringLiterals[s] = LastString;
         var bytes = System.Text.Encoding.UTF8.GetBytes(s)!;
 
-        var label = $"$STR_{LastString}$";
+        var label = $"STR_{LastString}@@";
         StringData += 
         $"{label}: db {string.Join("", bytes.Select(b => b.ToString() + ","))}0,0,0,0\n";
         StringData += $"{label}LEN: dq {bytes.Length}\n";
@@ -28,9 +28,9 @@ public class Generator
     private string GetStringLabel(string str)
     {
         if(StringLiterals.ContainsKey(str)) 
-            return $"$STR_{StringLiterals[str]}$";
+            return $"STR_{StringLiterals[str]}@@";
         AddStringLiteral(str);
-        return $"$STR_{StringLiterals[str]}$";
+        return $"STR_{StringLiterals[str]}@@";
     }
 
     private int LastString;
@@ -68,10 +68,10 @@ public class Generator
 
         "section .data\n" +
         "{0}" +
-        "$OutOfBounds: db \"Attempted to get item %d of an array with length %d\",0xA,0\n" +
-        "$gclen: dq -1\n" +
-        $"$gccap: dq {Settings.GCStackSize}\n" +
-        "$gcptr: dq 0\n" +
+        "error@@OutOfBounds: db \"Attempted to get item %d of an array with length %d\",0xA,0\n" +
+        "gclen@@: dq -1\n" +
+        $"gccap@@: dq {Settings.GCStackSize}\n" +
+        "gcptr@@: dq 0\n" +
 
         "section .text\n" +
 
@@ -86,10 +86,10 @@ public class Generator
 
         $"mov {(Windows ? "rcx" : "rdi")}, { Settings.GCStackSize * Settings.Bytes }\n" +
         "call malloc\n" +
-        "mov [rel $gcptr], rax\n" +
+        "mov [rel gcptr@@], rax\n" +
 
         "sub rsp, 32\n" +
-        "call _$main\n" +
+        "call main@@\n" +
         (Windows ? "mov rcx, [rsp]\ncall ExitProcess\n" : "") +
         "mov rbx, [rsp]\n" +
         "mov rax, 1\n" +
@@ -99,7 +99,7 @@ public class Generator
 
 
 
-        "$error:\n" +
+        "error@@:\n" +
         "sub rsp, 32\n" +
         "call printf\n" +
         $"{(Windows ? "mov rcx, -1\ncall ExitProcess\n" : "")}" +
@@ -110,70 +110,70 @@ public class Generator
 
 
 
-        "$gccheck:\n" +
+        "gccheck@@:\n" +
         "push rbp\n" +
-        "mov rax, [rel $gccap]\n" +
+        "mov rax, [rel gccap@@]\n" +
         "sub rax, 1\n" +
-        "mov rbx, [rel $gclen]\n" +
+        "mov rbx, [rel gclen@@]\n" +
         "cmp rax, rbx\n" +
-        "jg $gccheckret\n" +
+        "jg gccheckret@@\n" +
         "xor rdx, rdx\n" +
-        "mov rax, [rel $gccap]\n" +
+        "mov rax, [rel gccap@@]\n" +
         "mov rbx, 2\n" +
         "mul rbx\n" +
-        "mov [rel $gccap], rax\n" +
+        "mov [rel gccap@@], rax\n" +
 
         "sub rsp, 32\n" +
-        $"mov {(Windows ? "rcx" : "rdi")}, [rel $gcptr]\n" +
-        "mov rax, [rel $gccap]\n" +
+        $"mov {(Windows ? "rcx" : "rdi")}, [rel gcptr@@]\n" +
+        "mov rax, [rel gccap@@]\n" +
         $"mov rbx, {Settings.Bytes}\n" +
         "mul rax\n" +
         $"mov {(Windows ? "rdx" : "rsi")}, rax\n" +
         "call realloc\n" +
-        "mov [rel $gcptr], rax\n" +
+        "mov [rel gcptr@@], rax\n" +
         "add rsp, 32\n" +
 
-        "$gccheckret:\n" +
+        "gccheckret@@:\n" +
         "pop rbp\n" +
         "ret\n" +
 
 
-        "$gcpush:\n" +
+        "gcpush@@:\n" +
         "push rbp\n" +
-        "mov rbx, [rel $gclen]\n" +
+        "mov rbx, [rel gclen@@]\n" +
         "inc rbx\n" +
-        "mov [rel $gclen], rbx\n" +
-        "call $gccheck\n" +
-        "mov rax, [rel $gcptr]\n" +
-        "mov rbx, [rel $gclen]\n" +
+        "mov [rel gclen@@], rbx\n" +
+        "call gccheck@@\n" +
+        "mov rax, [rel gcptr@@]\n" +
+        "mov rbx, [rel gclen@@]\n" +
         "mov [rax + rbx*8], r12\n" +
         "pop rbp\n" +
         "ret\n" +
 
 
-        "$gcframe:\n" + 
+        "gcframe@@:\n" + 
         "push rbp\n" +
         "mov r12, 0\n" +
-        "call $gcpush\n" +
+        "call gcpush@@\n" +
         "pop rbp\n" +
         "ret\n" +
 
 
-        "$gcclear:\n" +
+        "gcclear@@:\n" +
         "push rbp\n" +
-        "$gcclearloop:\n" +
-        "call $gcpop\n" +
+        "gcclearloop@@:\n" +
+        "call gcpop@@\n" +
         "cmp r12, 0\n" +
-        "jne $gcclearloop\n" +
+        "jne gcclearloop@@\n" +
         "pop rbp\n" +
         "ret\n" +
 
 
-        "$gcpop:\n" +
+        "gcpop@@:\n" +
         "push rbp\n" +
 
-        "mov rbx, [rel $gclen]\n" +
-        "mov r12, [rel $gcptr]\n" +
+        "mov rbx, [rel gclen@@]\n" +
+        "mov r12, [rel gcptr@@]\n" +
         "mov rdi, [r12 + rbx*8]\n" +
         $"{(Windows ? "mov rcx, rdi\n" : "")}" +
         "mov r12, rdi\n" +
@@ -182,9 +182,27 @@ public class Generator
         "call free\n" +
         "add rsp, 32\n" +
 
-        "mov rax, [rel $gclen]\n" +
+        "mov rax, [rel gclen@@]\n" +
         "sub rax, 1\n" +
-        "mov [rel $gclen], rax\n" +
+        "mov [rel gclen@@], rax\n" +
+        "pop rbp\n" +
+        "ret\n" + 
+
+
+        "gctrypop@@:\n" +
+        "push rbp\n" +
+
+        "mov rbx, [rel gclen@@]\n" +
+        "mov rax, [rel gcptr@@]\n" +
+        "mov rax, [rax + rbx*8]\n" +
+        "cmp rax, r12\n" +
+        "jne .gctrypop@@exit\n" +
+
+        "mov rbx, [rel gclen@@]\n" +
+        "dec rbx\n" +
+        "mov [rel gclen@@], rbx\n" +
+
+        ".gctrypop@@exit:\n" +
         "pop rbp\n" +
         "ret\n";
 
@@ -226,7 +244,7 @@ public class Generator
         foreach(var fn in AST.Fndefs)
         {
             var fnName = fn.Name;
-            if(fnName == "main") fnName = "_$main";
+            if(fnName == "main") fnName = "main@@";
 
             string fnBoilerplate = 
             $"{fnName}:\n" +
@@ -254,7 +272,7 @@ public class Generator
     private string GenerateBlock(FndefNode fn, BlockNode block, int nest)
     {
         string fnCode = "";
-        fnCode += "call $gcframe\n";
+        if(!block.Manual) fnCode += "call gcframe@@\n";
 
         foreach(var line in block.Statements)
         {
@@ -388,7 +406,7 @@ public class Generator
                     fnCode += "rep movsb\n";
                 }
 
-                fnCode += "call $gcclear\n".Repeat(nest);
+                fnCode += "call gcclear@@\n".Repeat(nest);
 
                 fnCode += "mov rsp, rbp\n";
                 fnCode += "pop rbp\n";
@@ -436,7 +454,7 @@ public class Generator
             else throw new System.Exception();
         }
 
-        fnCode += "call $gcclear\n";
+        if(!block.Manual) fnCode += "call gcclear@@\n";
         return fnCode;
     }
 
@@ -504,7 +522,7 @@ public class Generator
             result += "add rsp, 32\n";
             result += "mov [rsp], rax\n";
             result += "mov r12, rax\n";
-            result += "call $gcpush\n";
+            result += "call gcpush@@\n";
             result += "mov rdi, r12\n";
             result += $"mov rsi, {label}\n";
             result += $"mov rcx, [rel {lenlabel}]\n";
@@ -532,6 +550,12 @@ public class Generator
                 result += "not rax\n";
                 result += "push rax\n";
             }
+        }
+        else if(expr is ManualOp manop)
+        {
+            result += GenerateExpr(fn, manop.Expr);
+            result += "mov r12, [rsp]\n";
+            result += "call gctrypop@@\n";
         }
         else if(expr is Var varl)
         {
@@ -578,7 +602,7 @@ public class Generator
                 if((fnn = AST.Fndefs.Find(f => f.Name == varl.Name)) is not null)
                 {
                     var label = varl.WorkingName;
-                    if(label == "main") label = "_$main";
+                    if(label == "main") label = "main@@";
 
                     var retInfo = fnn.RetType.GetInfo(AST.TypeInfos);
 
@@ -728,9 +752,9 @@ public class Generator
                     result += "mov rdx, rbx\n";
 
                     // Pass the string by its adress kids
-                    result += "mov rcx, $OutOfBounds\n";
+                    result += "mov rcx, error@@OutOfBounds\n";
 
-                    result += $"call $error\n";
+                    result += $"call error@@\n";
                     result += $"{ib}:\n";
 
                     result += $"lea rsi, [rax+rbx*{info.ByteSize}]\n";
@@ -788,7 +812,7 @@ public class Generator
             result += $"mov [rsp], rax\n";
             // TODO: Not push if manual mode specified
             result += $"mov r12, rax\n";
-            result += $"call $gcpush\n";
+            result += $"call gcpush@@\n";
 
             for(int i = 0; i < arr.Elems.Count; i++)
             {
@@ -825,7 +849,7 @@ public class Generator
             result += $"mov [rsp], rax\n";
             // TODO: Not push if manual mode specified
             result += $"mov r12, rax\n";
-            result += $"call $gcpush\n";
+            result += $"call gcpush@@\n";
         }
         else throw new System.Exception(expr.GetType().ToString());
 

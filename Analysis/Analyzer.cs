@@ -346,6 +346,19 @@ public class Analyzer
             negop.Type = type;
             return type;
         }
+        if(expr is ManualOp manop)
+        {
+            var type = FigureOutTheTypeOfAExpr(prefix, manop.Expr, hint);
+            if(!type.Is<VPointer>() && !type.Is<VArray>())
+            {
+                // FIXME: Error
+                Report(Error.TypeMismatchMany([VType.Int, VType.Bool], type, manop.Origin));
+                return VType.Invalid;
+            }
+
+            manop.Type = type;
+            return type;
+        }
         if(expr is ArrayLit arr)
         {
             // Infer type of an empty array

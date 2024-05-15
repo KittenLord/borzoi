@@ -99,7 +99,7 @@ public class Lexer
         if(PeekPred(Eq('['))) return Put(TokenType.LBrack, Popc());
         if(PeekPred(Eq(']'))) return Put(TokenType.RBrack, Popc());
 
-        if(PeekPred(Eq('=', '<', '>', '!'))) return ReadOperator();
+        if(PeekPred(Eq('=', '<', '>', '!', '&'))) return ReadOperator();
 
         Popc();
         return Put(TokenType.Illegal);
@@ -147,6 +147,14 @@ public class Lexer
 
     private Token ReadOperator()
     {
+        if(PeekPred(Eq('&')))
+        {
+            Popc();
+            if(PeekPred(Eq('&')))
+            { Popc(); return Put(TokenType.ManualBlock, "&&"); }
+            return Put(TokenType.Manual, "&");
+        }
+
         if(PeekPred(Eq('=')))
         {
             Popc();

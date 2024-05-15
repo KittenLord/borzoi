@@ -32,6 +32,8 @@ public enum TokenType
     Comma,
     Period,
     Pointer,
+    Manual,
+    ManualBlock,
 
 
     Id,

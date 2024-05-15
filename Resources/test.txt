@@ -1,23 +1,8 @@
-link "raylib"
-link "gdi32"
-link "winmm"
+cfn printf(byte[], *) int
 
-cfn InitWindow(int w, int h, byte[] title)
-cfn WindowShouldClose() bool
-cfn BeginDrawing()
-cfn EndDrawing()
-cfn ClearBackground(int color)
-cfn SetTargetFPS(int fps)
+fn main() int {
+    let int[] array = &[1, 2, 3]
+    if true &&{
 
-fn main() {
-    call InitWindow(800, 450, "big POOPA Aboba")
-    call SetTargetFPS(60)
-
-    while !WindowShouldClose() {
-        call BeginDrawing()
-
-            call ClearBackground(1111111)
-
-        call EndDrawing()
     }
 }

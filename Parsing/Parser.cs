@@ -21,6 +21,14 @@ public class Parser
         Success = true;
     }
 
+    private static readonly TokenType[] LeafTokens = 
+        [TokenType.IntLit, TokenType.BoolLit, TokenType.StrLit, 
+         TokenType.Id, 
+         TokenType.LParen, TokenType.LBrack, 
+         TokenType.Mul, TokenType.Pointer,
+         TokenType.Not,
+         TokenType.Manual];
+
     private Token Pop() => Lexer.Pop();
     private Token Peek() => Lexer.Peek();
 
@@ -186,17 +194,11 @@ public class Parser
 
         _ = Pop();
 
-        if(!Peek().Is(TokenType.Id, TokenType.LCurly)) 
-        { Report(Error.Expected([TokenType.Id, TokenType.LCurly], Peek())); return null; }
-
         var type = VType.Void;
         var typeT = (Token?)null;
         if(Peek().Is(TokenType.Id)) { typeT = Peek(); type = ParseType(); }
 
-        if(!Peek().Is(TokenType.LCurly)) 
-        { Report(Error.Expected([TokenType.LCurly], Peek())); return null; }
-
-        var block = ParseBlock();
+        var block = ParseBlock(type != VType.Void, true);
         if(block is null) { return null; }
 
         return new FndefNode(origin, name, args, type, typeT, block);
@@ -231,13 +233,31 @@ public class Parser
         return type;
     }
 
-    private BlockNode? ParseBlock()
+    private static List<TokenType> StatementKeyTokens = 
+        [ TokenType.Let, TokenType.Call, TokenType.Mut, TokenType.If, 
+          TokenType.Ret, TokenType.Do, TokenType.While ];
+    private static List<TokenType> StatementTokens = LeafTokens.Concat(StatementKeyTokens).ToList();
+    private BlockNode? ParseBlock(bool returnExpr, bool forceCurly = false)
     {
-        _ = Pop();
+        if(forceCurly && !Peek().Is(TokenType.LCurly, TokenType.ManualBlock))
+        { Report(Error.Expected([TokenType.ManualBlock, TokenType.LCurly], Peek())); return null; }
+        
+        bool manualBlock = false;
+        if(Peek().Is(TokenType.ManualBlock)) { Pop(); manualBlock = true; }
+
+        bool singleLine = Peek().Is(StatementTokens.ToArray());
+        if(!singleLine && !Peek().Is(TokenType.LCurly))
+        { Report(Error.Expected([TokenType.LCurly], Peek())); return null; }
+
+        if(!singleLine) _ = Pop();
 
         List<IStatement> statements = new();
-        while(!Peek().Is(TokenType.RCurly))
+
+        while(!Peek().Is(TokenType.RCurly) || singleLine)
         {
+            if(!Peek().Is(StatementTokens.ToArray()))
+            { Report(Error.Expected(StatementTokens.ToArray(), Peek())); return null; }
+
             if(Peek().Is(TokenType.Let))
             {
                 var let = ParseLet();
@@ -258,27 +278,30 @@ public class Parser
             }
             else if(Peek().Is(TokenType.If))
             {
-                var @if = ParseIf();
+                var @if = ParseIf(returnExpr);
                 if(@if is null) { return null; }
                 statements.Add(@if);
             }
             else if(Peek().Is(TokenType.Ret))
             {
-                var @return = ParseReturn();
+                var @return = ParseReturn(returnExpr);
                 if(@return is null) { return null; }
                 statements.Add(@return);
             }
             else if(Peek().Is(TokenType.Do, TokenType.While))
             {
-                var @while = ParseWhile();
+                var @while = ParseWhile(returnExpr);
                 if(@while is null) { return null; }
                 statements.Add(@while);
             }
+            else throw new System.Exception($"{Peek()}");
+
+            if(singleLine) break;
         }
 
-        _ = Pop();
+        if(!singleLine) _ = Pop();
 
-        return new BlockNode(statements);
+        return new BlockNode(statements, manualBlock);
     }
 
     private LetNode? ParseLet()
@@ -311,7 +334,7 @@ public class Parser
         var origin = Pop();
 
         if(!CanStartLeaf(Peek().Type))
-        { Report(Error.Expected(leafTokens, Peek())); return null; }
+        { Report(Error.Expected(LeafTokens, Peek())); return null; }
 
         var expr = ParseExpr();
         if(expr is null) { return null; }
@@ -349,11 +372,11 @@ public class Parser
         return new MutNode(origin, varn, expr);
     }
 
-    private ReturnNode? ParseReturn()
+    private ReturnNode? ParseReturn(bool returnExpr)
     {
         var origin = Pop();
 
-        if(!CanStartLeaf(Peek().Type)) 
+        if(!returnExpr) 
             return new ReturnNode(origin);
 
         var expr = ParseExpr();
@@ -362,7 +385,7 @@ public class Parser
         return new ReturnNode(origin, expr);
     }
 
-    private WhileNode? ParseWhile()
+    private WhileNode? ParseWhile(bool returnExpr)
     {
         var origin = Pop();
         bool doo = origin.Is(TokenType.Do);
@@ -380,45 +403,44 @@ public class Parser
         var expr = ParseExpr();
         if(expr is null) return null;
 
-        var block = ParseBlock();
+        var block = ParseBlock(returnExpr);
         if(block is null) return null;
 
         return new WhileNode(origin, expr, doo, block);
     }
 
-    private IfNode? ParseIf()
+    private IfNode? ParseIf(bool returnExpr)
     {
         var origin = Pop();
 
         var expr = ParseExpr();
         if(expr is null) { return null; }
 
-        if(!Peek().Is(TokenType.LCurly)) 
-        { Report(Error.Expected([TokenType.LCurly], Peek())); return null; }
-
-        var block = ParseBlock();
+        var block = ParseBlock(returnExpr);
         if(block is null) { return null; }
 
         if(!Peek().Is(TokenType.Else)) 
             return new IfNode(origin, expr, block);
-
         _ = Pop();
-        if(Peek().Is(TokenType.LCurly))
-        {
-            var @elseBlock = ParseBlock();
-            if(@elseBlock is null) { return null; }
-            return new IfNode(origin, expr, block, @elseBlock);
-        }
-        else if(Peek().Is(TokenType.If))
-        {
-            var elseif = ParseIf();
-            if(elseif is null) { return null; }
-            var @elseBlock = new BlockNode([elseif]);
-            return new IfNode(origin, expr, block, @elseBlock);
-        }
 
-        Report(Error.Expected([TokenType.If, TokenType.LCurly], Peek()));
-        return null;
+        var elseBlock = ParseBlock(returnExpr);
+        if(elseBlock is null) { return null; }
+        return new IfNode(origin, expr, block, elseBlock);
+
+        // _ = Pop();
+        // if(Peek().Is(TokenType.LCurly))
+        // {
+        //     var @elseBlock = ParseBlock();
+        //     if(@elseBlock is null) { return null; }
+        //     return new IfNode(origin, expr, block, @elseBlock);
+        // }
+        // else if(Peek().Is(TokenType.If))
+        // {
+        //     var elseif = ParseIf();
+        //     if(elseif is null) { return null; }
+        //     var @elseBlock = new BlockNode([elseif], elseif.Block.Manual);
+        //     return new IfNode(origin, expr, block, @elseBlock);
+        // }
     }
 
     private static readonly TokenType[] Binops = 
@@ -439,14 +461,8 @@ public class Parser
         };
     }
 
-    private static readonly TokenType[] leafTokens = 
-        [TokenType.IntLit, TokenType.BoolLit, TokenType.StrLit, 
-         TokenType.Id, 
-         TokenType.LParen, TokenType.LBrack, 
-         TokenType.Mul, TokenType.Pointer,
-         TokenType.Not];
 
-    private bool CanStartLeaf(TokenType t) => leafTokens.Contains(t);
+    private bool CanStartLeaf(TokenType t) => LeafTokens.Contains(t);
     private IExpr? ParseExprLeaf()
     {
         if(!CanStartLeaf(Peek().Type)) throw new System.Exception("FUUUCK");
@@ -472,12 +488,26 @@ public class Parser
 
             return new PointerOp(origin, expr);
         }
+        if(Peek().Is(TokenType.Manual))
+        {
+            var origin = Pop();
+            if(!CanStartLeaf(Peek().Type))
+            {
+                Report(Error.Expected(LeafTokens, Peek()));
+                return null;
+            }
+
+            var expr = ParseExprLeaf();
+            if(expr is null) { return null; }
+
+            return new ManualOp(origin, expr);
+        }
         if(Peek().Is(TokenType.Not))
         {
             var origin = Pop();
             if(!CanStartLeaf(Peek().Type))
             {
-                Report(Error.Expected(leafTokens, Peek()));
+                Report(Error.Expected(LeafTokens, Peek()));
                 return null;
             }
 
@@ -525,7 +555,7 @@ public class Parser
                     var origin = Pop();
                     if(!CanStartLeaf(Peek().Type))
                     {
-                        Report(Error.Expected(leafTokens, Peek()));
+                        Report(Error.Expected(LeafTokens, Peek()));
                         return null;
                     }
 
@@ -597,7 +627,7 @@ public class Parser
         {
             var origin = Pop();
             if(!CanStartLeaf(Peek().Type)) 
-                { Report(Error.Expected(leafTokens, Peek())); return null; }
+                { Report(Error.Expected(LeafTokens, Peek())); return null; }
             var expr = ParseExpr();
             if(expr is null) { return null; }
             return new ArrayInitOp(origin, expr);

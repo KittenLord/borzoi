@@ -80,7 +80,8 @@ public class Program
         ArgValue<string> OutputPath,
         ArgValue<string> OutputObjPath,
         ArgValue<string> OutputNasmPath,
-        ArgValue<bool?> PlatformWindows)
+        ArgValue<bool?> PlatformWindows,
+        ArgValue<bool> DisplayParser)
     BuildArguments(ArgumentParser parser)
     {
         return (
@@ -90,7 +91,8 @@ public class Program
             parser.SingleArgument(["--output-obj", "-oo"], new(), str => str[0]),
             parser.SingleArgument(["--output-nasm", "-onasm"], new(), str => str[0]),
             parser.SingleArgument<bool?>(["--platform", "-p"], new(), str => str[0] switch 
-                { "win" or "win64" => true, "linux" or "lin" or "linux64" or "lin64" => false, _ => null })
+                { "win" or "win64" => true, "linux" or "lin" or "linux64" or "lin64" => false, _ => null }),
+            parser.FlagArgument(["--display-parser", "-parser"], new())
         );
     }
     
@@ -141,7 +143,7 @@ public class Program
             files.Add(file);
         }
 
-        var compilerResult = GenerateNasm(files, platformWindows);
+        var compilerResult = GenerateNasm(files, platformWindows, build.DisplayParser.Get(false));
         if(compilerResult.result.Error) return compilerResult.result;
         File.WriteAllText(outputNasmPath, compilerResult.data!.Nasm);
 
@@ -163,7 +165,7 @@ public class Program
     }
 
     private class CompileData { public string Nasm = ""; public List<string> Links = new(); }
-    private static (Result result, CompileData? data) GenerateNasm(List<string> files, bool platformWindows)
+    private static (Result result, CompileData? data) GenerateNasm(List<string> files, bool platformWindows, bool displayParser)
     {
         var parser = new Parser(null);
 
@@ -177,6 +179,8 @@ public class Program
 
             if(!lexer.Success || !parser.Success) return (new("A big fucky wucky happened while parsing"), null);
         }
+
+        if(displayParser) Console.WriteLine(parser.AST);
 
         var analyzer = new Analyzer(parser.AST);
         analyzer.Analyze();
