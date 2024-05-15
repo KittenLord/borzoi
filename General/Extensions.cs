@@ -5,6 +5,8 @@ using System.Linq;
 public static class Extensions
 {
     public static string str(this IEnumerable<char> s) => new string(s.ToArray());
+    public static int i(this bool b) => b ? 1 : 0;
+    public static int ni(this bool b) => b ? 0 : 1;
 
     public static string Repeat(this string str, int r)
     {

@@ -1,8 +1,8 @@
 fn main() bool {
     let int i = 0
     while i < 1000000 {
-        let int[] a = *1000000
-        mut a = *1000000000
+        let int[] a = *100000000000
+        mut a = *100000000000
         mut i = i + 1
     }
     ret false

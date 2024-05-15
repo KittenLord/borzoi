@@ -1,0 +1,14 @@
+cfn printf(byte[], *) int
+
+fn concat(byte[] a, byte[] b) byte[] && {
+    let byte[] result = *(a.len + b.len)
+    for i from 0 until a.len mut result[i] = a[i]
+    for i from 0 until b.len mut result[i + a.len] = b[i]
+    ret result
+}
+
+fn main() {
+    let byte[] str = concat("Hello, ", "World!")
+    call printf(str)
+    ret
+}

@@ -202,13 +202,20 @@ public class Lexer
         if(id == "from") return Put(TokenType.From, id);
         if(id == "link") return Put(TokenType.Link, id);
         if(id == "call") return Put(TokenType.Call, id);
-        if(id == "let") return Put(TokenType.Let, id);
         if(id == "mut") return Put(TokenType.Mut, id);
         if(id == "ret") return Put(TokenType.Ret, id);
         if(id == "if") return Put(TokenType.If, id);
         if(id == "else") return Put(TokenType.Else, id);
         if(id == "while") return Put(TokenType.While, id);
         if(id == "do") return Put(TokenType.Do, id);
+        if(id == "for") return Put(TokenType.For, id);
+        if(id == "until") return Put(TokenType.Until, id);
+        if(id == "let") 
+        {
+            if(PeekPred(Eq('@'))) 
+                { Popc(); return Put(TokenType.LetAlloc, id + "@"); }
+            return Put(TokenType.Let, id);
+        }
         if(id == "true" || id == "false") 
         {
             var boolean = Put(TokenType.BoolLit, id);

@@ -103,6 +103,12 @@ public class Program
         var argParser = new ArgumentParser();
         var build = BuildArguments(argParser);
 
+        ArgValue<bool> exitCode = null;
+        if(run)
+        {
+            exitCode = argParser.FlagArgument(["--exit-code"], new());
+        }
+
         var filePaths = build.FilePaths;
         var libSearchPaths = build.LibSearchPaths;
 
@@ -153,15 +159,23 @@ public class Program
                 compilerResult.data!.Links, libSearchPaths);
         if(buildResult.Error) return buildResult;
 
+        Console.WriteLine("Build was successful!");
+
         if(run)
         {
             var process = new Process();
             process.StartInfo = new(outputPath) 
             { UseShellExecute = false };
             process.Start();
+            process.WaitForExit();
+
+            if(exitCode!.Get(false))
+            {
+                Console.WriteLine($"\nProgram finished with exit code {process.ExitCode}");
+            }
         }
 
-        return new(0, "Build was successful!");
+        return new();
     }
 
     private class CompileData { public string Nasm = ""; public List<string> Links = new(); }

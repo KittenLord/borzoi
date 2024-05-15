@@ -5,8 +5,10 @@ extern calloc
 extern free
 extern printf
 extern ExitProcess
+extern signal
 section .data
-error@@OutOfBounds: db "Attempted to get item %d of an array with length %d",0xA,0
+error@@OutOfBounds: db "You a big stupid, the array has only %d elements and you're trying to access index %d? Are you crazy?!",0xA,0
+error@@SEGFAULT: db "Oopsie daisy, a segfowolt has occurred",0xA,0
 gclen@@: dq -1
 gccap@@: dq 4
 gcptr@@: dq 0
@@ -19,6 +21,9 @@ sub rsp, 32
 mov rcx, 32
 call malloc
 mov [rel gcptr@@], rax
+mov rcx, 11
+mov rdx, handler@@sigsegv
+call signal
 sub rsp, 32
 call main@@
 mov rcx, [rsp]
@@ -27,6 +32,7 @@ mov rbx, [rsp]
 mov rax, 1
 int 80h
 error@@:
+push rbp
 sub rsp, 32
 call printf
 mov rcx, -1
@@ -34,6 +40,10 @@ call ExitProcess
 mov rbx, 1
 mov rax, 0
 int 80h
+handler@@sigsegv:
+push rbp
+mov rcx, error@@SEGFAULT
+call error@@
 gccheck@@:
 push rbp
 mov rax, [rel gccap@@]
@@ -60,6 +70,11 @@ pop rbp
 ret
 gcpush@@:
 push rbp
+cmp r12, 0
+jne gcpush@@body
+cmp r13, 0
+jl gcpush@@exit
+gcpush@@body:
 mov rbx, [rel gclen@@]
 inc rbx
 mov [rel gclen@@], rbx
@@ -67,12 +82,15 @@ call gccheck@@
 mov rax, [rel gcptr@@]
 mov rbx, [rel gclen@@]
 mov [rax + rbx*8], r12
+gcpush@@exit:
 pop rbp
 ret
 gcframe@@:
 push rbp
 mov r12, 0
+mov r13, 69
 call gcpush@@
+mov r13, -69
 pop rbp
 ret
 gcclear@@:
@@ -114,91 +132,115 @@ ret
 main@@:
 push rbp
 mov rbp, rsp
-sub rsp, 32
+sub rsp, 16
 call gcframe@@
-mov QWORD [rbp-8], 0
-_do$$$1:
+mov QWORD [rbp-8], 10
+sub rsp, 16
+sub rsp, 16
 push 0
 push QWORD [rbp-8+0]
-push 0
-push 1000000
-mov rax, [rsp+16]
-mov rbx, [rsp]
-add rsp, 16
-cmp rax, rbx
-mov rax, 1
-jl _temp$$$2
-mov rax, 0
-_temp$$$2:
-mov [rsp], rax
-mov rax, [rsp]
-add rsp, 16
-cmp rax, 1
-jne _endwhile$$$0
-call gcframe@@
-push 0
-push 1000000
-mov rax, [rsp]
-add rsp, 16
-sub rsp, 16
-mov QWORD [rsp+8], rax
-inc rax
-mov rcx, rax
-mov rdx, 8
-sub rsp, 32
-call calloc
-add rsp, 32
-mov [rsp], rax
-mov r12, rax
-call gcpush@@
-pop rax
-mov [rbp-32], rax
-pop rax
-mov [rbp-32+8], rax
-push 0
-push 1000000000
-mov rax, [rsp]
-add rsp, 16
-sub rsp, 16
-mov QWORD [rsp+8], rax
-inc rax
-mov rcx, rax
-mov rdx, 8
-sub rsp, 32
-call calloc
-add rsp, 32
-mov [rsp], rax
-mov r12, rax
-call gcpush@@
-mov r12, [rsp]
-call gctrypop@@
-lea rax, [rbp-32]
+lea rdi, [rsp+16]
 lea rsi, [rsp]
-mov rdi, rax
-mov rcx, 16
+mov rcx, 8
 rep movsb
 add rsp, 16
+call fibonacci
+add rsp, 16
+lea rdi, [rbp+16]
+lea rsi, [rsp]
+mov rcx, 8
+rep movsb
+call gcclear@@
+mov rsp, rbp
+pop rbp
+ret
+call gcclear@@
+mov rsp, rbp
+pop rbp
+ret
+fibonacci:
+push rbp
+mov rbp, rsp
+sub rsp, 0
+call gcframe@@
 push 0
-push QWORD [rbp-8+0]
+push QWORD [rbp+16+0]
 push 0
 push 1
 mov rax, [rsp+16]
 mov rbx, [rsp]
 add rsp, 16
+cmp rax, rbx
+mov rax, 1
+jle _temp$$$2
+mov rax, 0
+_temp$$$2:
+mov [rsp], rax
+mov rax, [rsp]
+add rsp, 16
+and rax, 1
+cmp rax, 1
+jne _else$$$1
+call gcframe@@
+push 0
+push 1
+lea rdi, [rbp+32]
+lea rsi, [rsp]
+mov rcx, 8
+rep movsb
+call gcclear@@
+call gcclear@@
+mov rsp, rbp
+pop rbp
+ret
+call gcclear@@
+jmp _endif$$$0
+_else$$$1:
+_endif$$$0:
+sub rsp, 16
+sub rsp, 16
+push 0
+push QWORD [rbp+16+0]
+push 0
+push 1
+mov rax, [rsp+16]
+mov rbx, [rsp]
+add rsp, 16
+sub rax, rbx
+mov [rsp], rax
+lea rdi, [rsp+16]
+lea rsi, [rsp]
+mov rcx, 8
+rep movsb
+add rsp, 16
+call fibonacci
+add rsp, 16
+sub rsp, 16
+sub rsp, 16
+push 0
+push QWORD [rbp+16+0]
+push 0
+push 2
+mov rax, [rsp+16]
+mov rbx, [rsp]
+add rsp, 16
+sub rax, rbx
+mov [rsp], rax
+lea rdi, [rsp+16]
+lea rsi, [rsp]
+mov rcx, 8
+rep movsb
+add rsp, 16
+call fibonacci
+add rsp, 16
+mov rax, [rsp+16]
+mov rbx, [rsp]
+add rsp, 16
 add rax, rbx
 mov [rsp], rax
-lea rax, [rbp-8]
-pop rbx
-mov [rax], rbx
-add rsp, 8
-call gcclear@@
-jmp _do$$$1
-_endwhile$$$0:
-push 0
-push 0
-lea rdi, [rbp+16]
+lea rdi, [rbp+32]
 lea rsi, [rsp]
-mov rcx, 1
+mov rcx, 8
 rep movsb
 call gcclear@@
 mov rsp, rbp

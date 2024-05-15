@@ -234,8 +234,9 @@ public class Parser
     }
 
     private static List<TokenType> StatementKeyTokens = 
-        [ TokenType.Let, TokenType.Call, TokenType.Mut, TokenType.If, 
-          TokenType.Ret, TokenType.Do, TokenType.While ];
+        [ TokenType.Let, TokenType.LetAlloc, TokenType.Call, TokenType.Mut, 
+          TokenType.If, TokenType.Ret, TokenType.Do, TokenType.While,
+          TokenType.For ];
     private static List<TokenType> StatementTokens = LeafTokens.Concat(StatementKeyTokens).ToList();
     private BlockNode? ParseBlock(bool returnExpr, bool forceCurly = false)
     {
@@ -258,7 +259,7 @@ public class Parser
             if(!Peek().Is(StatementTokens.ToArray()))
             { Report(Error.Expected(StatementTokens.ToArray(), Peek())); return null; }
 
-            if(Peek().Is(TokenType.Let))
+            if(Peek().Is(TokenType.Let, TokenType.LetAlloc))
             {
                 var let = ParseLet();
                 if(let is null) { return null; }
@@ -288,6 +289,12 @@ public class Parser
                 if(@return is null) { return null; }
                 statements.Add(@return);
             }
+            else if(Peek().Is(TokenType.For))
+            {
+                var @for = ParseFor(returnExpr);
+                if(@for is null) { return null; }
+                statements.Add(@for);
+            }
             else if(Peek().Is(TokenType.Do, TokenType.While))
             {
                 var @while = ParseWhile(returnExpr);
@@ -307,6 +314,7 @@ public class Parser
     private LetNode? ParseLet()
     {
         var origin = Pop();
+        var alloc = origin.Is(TokenType.LetAlloc);
 
         if(!Peek().Is(TokenType.Id)) 
         { Report(Error.Expected([TokenType.Id], Peek())); return null; }
@@ -326,7 +334,7 @@ public class Parser
         var expr = ParseExpr();
         if(expr is null) { return null; }
         
-        return new LetNode(origin, type, name, expr);
+        return new LetNode(origin, type, name, expr, alloc);
     }
 
     private CallNode? ParseCall()
@@ -384,6 +392,43 @@ public class Parser
 
         return new ReturnNode(origin, expr);
     }
+
+    private ForNode? ParseFor(bool returnExpr)
+    {
+        var origin = Pop();
+
+        if(!Peek().Is(TokenType.Id))
+        { Report(Error.Expected([TokenType.Id], Peek())); return null; }
+
+        var itT = Pop();
+        Var iterator = new Var(itT, itT.Value);
+
+        if(!Peek().Is(TokenType.From))
+        { Report(Error.Expected([TokenType.From], Peek())); return null; }
+        Pop();
+
+        if(!CanStartLeaf(Peek().Type))
+        { Report(Error.Expected(LeafTokens, Peek())); return null; }
+
+        var init = ParseExpr();
+        if(init is null) { return null; }
+
+        if(!Peek().Is(TokenType.Until))
+        { Report(Error.Expected([TokenType.Until], Peek())); return null; }
+        Pop();
+
+        if(!CanStartLeaf(Peek().Type))
+        { Report(Error.Expected(LeafTokens, Peek())); return null; }
+
+        var until = ParseExpr();
+        if(until is null) { return null; }
+
+        var block = ParseBlock(returnExpr);
+        if(block is null) { return null; }
+
+        return new ForNode(origin, iterator, init, until, block);
+    }
+
 
     private WhileNode? ParseWhile(bool returnExpr)
     {

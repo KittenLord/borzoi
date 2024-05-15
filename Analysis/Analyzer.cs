@@ -130,7 +130,7 @@ public class Analyzer
                 return false;
             }
 
-            Identifiers.Add(new Identifier(cfn.Name, cfn.Name, type, cfn.Origin));
+            Identifiers.Add(new Identifier(cfn.Name, cfn.Name, type.Copy(), cfn.Origin));
         }
 
         foreach(var fn in AST.Fndefs)
@@ -170,7 +170,7 @@ public class Analyzer
                 }
             }
 
-            Identifiers.Add(new Identifier(fn.Name, fn.Name, type, fn.Origin));
+            Identifiers.Add(new Identifier(fn.Name, fn.Name, type.Copy(), fn.Origin));
         }
 
         foreach(var fn in AST.Fndefs)
@@ -192,7 +192,7 @@ public class Analyzer
 
                 // TODO: Arg origin?
 
-                var id = new Identifier(arg.Name, wname, arg.Type, fn.Origin);
+                var id = new Identifier(arg.Name, wname, arg.Type.Copy(), fn.Origin);
                 fn.ArgsInternal.Add(new StackVar(arg.Type, wname, -1));
                 Identifiers.Add(id);
             }
@@ -488,9 +488,12 @@ public class Analyzer
                     return false;
                 }
 
-                let.Var = new Var(let.Origin, let.Name, wname, let.Type);
-                var id = new Identifier(let.Name, wname, let.Type, let.Origin);
-                fn.VarsInternal.Add(new StackVar(let.Type, wname, -1));
+                var letType = let.Type.Copy();
+                if(let.Alloc) letType.Modify(VTypeMod.Pointer());
+
+                let.Var = new Var(let.Origin, let.Name, wname, letType);
+                var id = new Identifier(let.Name, wname, letType, let.Origin);
+                fn.VarsInternal.Add(new StackVar(letType, wname, -1));
                 Identifiers.Add(id);
             }
             else if(line is CallNode call)
@@ -504,6 +507,7 @@ public class Analyzer
 
                 var destType = FigureOutTheTypeOfAExpr(prefix, mut.Var, VType.Invalid);
                 var type = FigureOutTheTypeOfAExpr(prefix, mut.Expr, destType);
+                mut.Expr.Type = type;
 
                 if(destType != type) 
                 {
@@ -542,9 +546,38 @@ public class Analyzer
                 var result = FigureOutTypesAndStuffForABlock(wh.Block, fn, prefix + iprefix + "$");
                 if(!result) return false;
             }
+            else if(line is ForNode forn)
+            {
+                var iprefix = GetPrefix("for");
+
+                var initType = FigureOutTheTypeOfAExpr(prefix, forn.Init, VType.Int);
+                var untilType = FigureOutTheTypeOfAExpr(prefix, forn.Until, VType.Int);
+
+                if(initType != VType.Int)
+                {
+                    Report(Error.TypeMismatch(VType.Int, initType, forn.Origin));
+                    return false;
+                }
+
+                if(untilType != VType.Int)
+                {
+                    Report(Error.TypeMismatch(VType.Int, untilType, forn.Origin));
+                    return false;
+                }
+
+                var wname = prefix + iprefix + "$" + forn.Iterator.Name;
+                forn.Iterator.WorkingName = wname;
+                forn.Iterator.Type = VType.Int;
+                var id = new Identifier(forn.Iterator.Name, wname, VType.Int, forn.Iterator.Origin);
+                fn.VarsInternal.Add(new StackVar(VType.Int, wname, -1));
+                Identifiers.Add(id);
+
+                var result = FigureOutTypesAndStuffForABlock(forn.Block, fn, prefix + iprefix + "$");
+                if(!result) return false;
+            }
             else if(line is ReturnNode ret)
             {
-                if(ret.Nothing != fn.RetType is null) 
+                if(ret.Nothing != (fn.RetType == VType.Void)) 
                 {
                     if(ret.Nothing) Report(Error.ReturnEmpty(true, ret.Origin));
                     else Report(Error.ReturnEmpty(false, ret.Origin));
@@ -563,6 +596,7 @@ public class Analyzer
                     }
                 }
             }
+            else throw new System.Exception("aboba");
         }
 
         return true;
@@ -583,5 +617,6 @@ public class Analyzer
 
         var result = FigureOutTypesAndStuff();
         AST.TypeInfos = TypeInfos;
+        AST.Identifiers = Identifiers;
     }
 }

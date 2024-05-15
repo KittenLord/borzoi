@@ -12,7 +12,7 @@ public enum TokenType
     Fn,
     Cfn,
     Call,
-    Let,
+    Let, LetAlloc,
     Mut,
     Ret,
     If,
@@ -20,6 +20,8 @@ public enum TokenType
     While,
     Do,
     From,
+    For,
+    Until,
 
 
     Link,

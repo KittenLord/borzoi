@@ -20,7 +20,7 @@ public class Generator
 
         var label = $"STR_{LastString}@@";
         StringData += 
-        $"{label}: db {string.Join("", bytes.Select(b => b.ToString() + ","))}0,0,0,0\n";
+        $"{label}: db {string.Join("", bytes.Select(b => b.ToString() + ","))}0\n";
         StringData += $"{label}LEN: dq {bytes.Length}\n";
         LastString++;
     }
@@ -51,7 +51,7 @@ public class Generator
         List<string> externFunctions = 
             [ "malloc", "realloc", "calloc", "free", "printf" ];
         if(Windows) externFunctions.AddRange(
-            [ "ExitProcess" ]);
+            [ "ExitProcess", "signal" ]);
 
         foreach(var cfn in AST.CFndefs)
         {
@@ -68,7 +68,8 @@ public class Generator
 
         "section .data\n" +
         "{0}" +
-        "error@@OutOfBounds: db \"Attempted to get item %d of an array with length %d\",0xA,0\n" +
+        "error@@OutOfBounds: db \"You a big stupid, the array has only %d elements and you're trying to access index %d? Are you crazy?!\",0xA,0\n" +
+        "error@@SEGFAULT: db \"Oopsie daisy, a segfowolt has occurred\",0xA,0\n" +
         "gclen@@: dq -1\n" +
         $"gccap@@: dq {Settings.GCStackSize}\n" +
         "gcptr@@: dq 0\n" +
@@ -88,6 +89,10 @@ public class Generator
         "call malloc\n" +
         "mov [rel gcptr@@], rax\n" +
 
+        "mov rcx, 11\n" +
+        "mov rdx, handler@@sigsegv\n" +
+        "call signal\n" +
+
         "sub rsp, 32\n" +
         "call main@@\n" +
         (Windows ? "mov rcx, [rsp]\ncall ExitProcess\n" : "") +
@@ -100,12 +105,19 @@ public class Generator
 
 
         "error@@:\n" +
+        "push rbp\n" +
         "sub rsp, 32\n" +
         "call printf\n" +
         $"{(Windows ? "mov rcx, -1\ncall ExitProcess\n" : "")}" +
         "mov rbx, 1\n" +
         "mov rax, 0\n" +
         "int 80h\n" +
+
+        "handler@@sigsegv:\n" +
+        "push rbp\n" +
+        "mov rcx, error@@SEGFAULT\n" +
+        "call error@@\n" +
+
 
 
 
@@ -140,6 +152,11 @@ public class Generator
 
         "gcpush@@:\n" +
         "push rbp\n" +
+        "cmp r12, 0\n" +
+        "jne gcpush@@body\n" +
+        "cmp r13, 0\n" +
+        "jl gcpush@@exit\n" +
+        "gcpush@@body:\n" +
         "mov rbx, [rel gclen@@]\n" +
         "inc rbx\n" +
         "mov [rel gclen@@], rbx\n" +
@@ -147,6 +164,7 @@ public class Generator
         "mov rax, [rel gcptr@@]\n" +
         "mov rbx, [rel gclen@@]\n" +
         "mov [rax + rbx*8], r12\n" +
+        "gcpush@@exit:\n" +
         "pop rbp\n" +
         "ret\n" +
 
@@ -154,7 +172,9 @@ public class Generator
         "gcframe@@:\n" + 
         "push rbp\n" +
         "mov r12, 0\n" +
+        "mov r13, 69\n" +
         "call gcpush@@\n" +
+        "mov r13, -69\n" +
         "pop rbp\n" +
         "ret\n" +
 
@@ -257,7 +277,7 @@ public class Generator
             "pop rbp\n" + 
             "ret\n";
 
-            string fnCode = GenerateBlock(fn, fn.Block, 1);
+            string fnCode = GenerateBlock(fn, fn.Block, 0);
 
             fnBoilerplate = string.Format(fnBoilerplate, fnCode);
 
@@ -273,6 +293,7 @@ public class Generator
     {
         string fnCode = "";
         if(!block.Manual) fnCode += "call gcframe@@\n";
+        if(!block.Manual) nest++;
 
         foreach(var line in block.Statements)
         {
@@ -281,13 +302,13 @@ public class Generator
                 var vari = fn.GetVar(let.Var.WorkingName);
                 var info = vari.Type.GetInfo(AST.TypeInfos);
 
-                if(Optimize && let.Expr is IntLit intlit)
+                if(Optimize && let.Expr is IntLit intlit && !let.Alloc)
                 {
 
                 fnCode += $"mov QWORD [rbp-{vari.Offset}], {intlit.Value}\n";
 
                 }
-                else if(Optimize && let.Expr is BoolLit boollit)
+                else if(Optimize && let.Expr is BoolLit boollit && !let.Alloc)
                 {
 
                 fnCode += $"mov BYTE [rbp-{vari.Offset}], {(boollit.Value ? 1 : 0)}\n";
@@ -298,34 +319,52 @@ public class Generator
 
                 fnCode += GenerateExpr(fn, let.Expr);
 
-                if(Optimize && let.Expr.Type.GetInfo(AST.TypeInfos).ByteSize == 8)
+                if(!let.Alloc)
                 {
 
-                fnCode += "pop rax\n";
-                fnCode += $"mov [rbp-{vari.Offset}], rax\n";
-                fnCode += $"add rsp, 8\n";
+                    if(Optimize && let.Expr.Type.GetInfo(AST.TypeInfos).ByteSize == 8)
+                    {
 
-                }
-                else if(Optimize && let.Expr.Type.GetInfo(AST.TypeInfos).ByteSize == 16)
-                {
-                
-                fnCode += "pop rax\n";
-                fnCode += $"mov [rbp-{vari.Offset}], rax\n";
-                fnCode += "pop rax\n";
-                fnCode += $"mov [rbp-{vari.Offset}+8], rax\n";
+                        fnCode += "pop rax\n";
+                        fnCode += $"mov [rbp-{vari.Offset}], rax\n";
+                        fnCode += $"add rsp, 8\n";
 
+                    }
+                    else if(Optimize && let.Expr.Type.GetInfo(AST.TypeInfos).ByteSize == 16)
+                    {
+
+                        fnCode += "pop rax\n";
+                        fnCode += $"mov [rbp-{vari.Offset}], rax\n";
+                        fnCode += "pop rax\n";
+                        fnCode += $"mov [rbp-{vari.Offset}+8], rax\n";
+
+                    }
+                    else
+                    {
+
+                        fnCode += $"lea rsi, [rsp]\n"; // source
+                        fnCode += $"lea rdi, [rbp-{vari.Offset}]\n"; // destination
+                        fnCode += $"mov rcx, {info.ByteSize}\n"; // length
+                        fnCode += $"rep movsb\n"; // pretty much memcpy
+                        fnCode += $"add rsp, {info.ByteSize.Pad(16)}\n";
+
+                    }
                 }
                 else
                 {
+                    var allocType = vari.Type.Copy();
+                    allocType.RemoveLastMod();
+                    var allocInfo = allocType.GetInfo(AST.TypeInfos);
 
-                fnCode += $"lea rsi, [rsp]\n"; // source
-                fnCode += $"lea rdi, [rbp-{vari.Offset}]\n"; // destination
-                fnCode += $"mov rcx, {info.ByteSize}\n"; // length
-                fnCode += $"rep movsb\n"; // pretty much memcpy
-                fnCode += $"add rsp, {info.ByteSize.Pad(16)}\n";
-
+                    fnCode += $"mov rdi, 1\nmov rcx, 1\n";
+                    fnCode += $"mov rsi, {allocInfo.ByteSize}\n";
+                    fnCode += $"mov rdx, {allocInfo.ByteSize}\n";
+                    fnCode += "sub rsp, 32\ncall calloc\nadd rsp, 32\n";
+                    fnCode += $"mov rdi, rax\nmov rsi, rsp\nmov rcx, {allocInfo.ByteSize}\n";
+                    fnCode += "rep movsb\n";
+                    fnCode += $"add rsp, {allocInfo.ByteSize.Pad(16)}\n";
+                    fnCode += $"mov [rbp-{vari.Offset}], rax\n";
                 }
-
 
                 }
             }
@@ -336,59 +375,18 @@ public class Generator
             }
             else if(line is MutNode mut)
             {
+                System.Console.WriteLine($"{mut.Expr.Type}");
                 var size = mut.Expr.Type.GetInfo(AST.TypeInfos).ByteSize;
-
-                if(Optimize && mut.Expr is IntLit intlit)
-                {
-
-                fnCode += GenerateExprAddress(fn, mut.Var);
-                fnCode += $"mov QWORD [rax], {intlit.Value}\n";
-
-                }
-                else if(Optimize && mut.Expr is BoolLit boollit)
-                {
-
-                fnCode += GenerateExprAddress(fn, mut.Var);
-                fnCode += $"mov BYTE [rax], {(boollit.Value ? 1 : 0)}\n";
-
-                }
-                else
-                {
 
                 fnCode += GenerateExpr(fn, mut.Expr);
                 fnCode += GenerateExprAddress(fn, mut.Var);
 
-                if(Optimize && mut.Expr.Type.GetInfo(AST.TypeInfos).ByteSize == 8)
-                {
-
-                fnCode += "pop rbx\n";
-                fnCode += $"mov [rax], rbx\n";
-                fnCode += $"add rsp, 8\n";
-
-                }
-                else if(Optimize && mut.Expr.Type.GetInfo(AST.TypeInfos).ByteSize == 8)
-                {
-
-                fnCode += "pop rbx\n";
-                fnCode += $"mov [rax], rbx\n";
-                fnCode += $"pop rbx\n";
-                fnCode += $"mov [rax+8], rbx\n";
-
-                }
-                else
-                {
-
+                System.Console.WriteLine($"{mut.Origin} {size} {mut.Expr.Type}");
                 fnCode += $"lea rsi, [rsp]\n";
                 fnCode += $"mov rdi, rax\n";
                 fnCode += $"mov rcx, {size}\n";
                 fnCode += "rep movsb\n";
                 fnCode += $"add rsp, {size.Pad(16)}\n";
-
-                }
-
-
-                }
-
             }
             else if(line is ReturnNode ret)
             {
@@ -420,14 +418,14 @@ public class Generator
                 fnCode += GenerateExpr(fn, ifn.Condition);
                 fnCode += $"mov rax, [rsp]\nadd rsp, 16\nand rax, 1\ncmp rax, 1\njne {label}\n";
 
-                fnCode += GenerateBlock(fn, ifn.Block, nest + 1);
+                fnCode += GenerateBlock(fn, ifn.Block, nest);
 
                 fnCode += $"jmp {endifLabel}\n";
                 fnCode += $"{label}:\n";
 
                 if(ifn.Else is not null)
                 {
-                    fnCode += GenerateBlock(fn, ifn.Else, nest + 1);
+                    fnCode += GenerateBlock(fn, ifn.Else, nest);
                 }
 
                 fnCode += $"{endifLabel}:\n";
@@ -443,12 +441,50 @@ public class Generator
                 condition += $"cmp rax, 1\n";
                 condition += $"jne {endLabel}\n";
 
-                var blockCode = GenerateBlock(fn, wh.Block, nest + 1);
+                var blockCode = GenerateBlock(fn, wh.Block, nest);
 
                 fnCode += $"{doLabel}:\n";
                 if(!wh.Do) { fnCode += condition + blockCode; }
                 else       { fnCode += blockCode + condition; }
                 fnCode += $"jmp {doLabel}\n";
+                fnCode += $"{endLabel}:\n";
+            }
+            else if(line is ForNode forn)
+            {
+                var iter = fn.GetVar(forn.Iterator.WorkingName);
+
+                var checkLabel = GetLabel("forcheck");
+                var endLabel = GetLabel("forend");
+                var stepLabel = GetLabel("forstep");
+                var tempLabel = GetLabel("fortemp");
+
+                fnCode += GenerateExpr(fn, forn.Init);
+                fnCode += GenerateExpr(fn, forn.Until);
+                fnCode += "pop rax\nadd rsp, 8\n";
+                fnCode += "pop rbx\nmov [rsp], rbx\n";
+                fnCode += "push rax\n";
+                fnCode += $"mov [rbp-{iter.Offset}], rbx\n";
+                fnCode += $"jmp {checkLabel}\n";
+
+                fnCode += $"{stepLabel}:\n";
+                fnCode += "mov rax, [rsp]\n";
+                fnCode += "mov rbx, [rsp+8]\n";
+                fnCode += "cmp rbx, rax\n"; // iter <> until
+                fnCode += $"jl {tempLabel}\n";
+                fnCode += "sub rbx, 2\n";
+                fnCode += $"{tempLabel}:\n";
+                fnCode += "inc rbx\n";
+                fnCode += $"mov [rsp+8], rbx\n";
+                fnCode += $"mov [rbp-{iter.Offset}], rbx\n";
+
+                fnCode += $"{checkLabel}:\n";
+                fnCode += "mov rax, [rsp]\n";
+                fnCode += "mov rbx, [rsp+8]\n";
+                fnCode += "cmp rax, rbx\n";
+                fnCode += $"je {endLabel}\n";
+
+                fnCode += GenerateBlock(fn, forn.Block, nest);
+                fnCode += $"jmp {stepLabel}\n";
                 fnCode += $"{endLabel}:\n";
             }
             else throw new System.Exception();
@@ -515,7 +551,7 @@ public class Generator
             result += "mov rsi, 1\nmov rdx, 1\n";
             result += $"push rdi\n";
             result += "push 0\n";
-            result += "add rdi, 4\n"; // null termination
+            result += "add rdi, 8\n"; // null termination
                 if(Windows) result += "mov rcx, rdi\n";
             result += "sub rsp, 32\n";
             result += "call calloc\n";
@@ -559,7 +595,8 @@ public class Generator
         }
         else if(expr is Var varl)
         {
-            var type = varl.Type.Copy();
+            var type = AST.Identifiers.Find(id => id.WorkingName == varl.WorkingName)!.Type.Copy();
+            System.Console.WriteLine($"{type} {varl.WorkingName}");
             // TODO: I'm almost sure that I fucked up accessors' order here
             if(varl.Accessors.Count == 0 || varl.Accessors.First() is not FuncAcc)
             {
@@ -757,6 +794,8 @@ public class Generator
                     result += $"call error@@\n";
                     result += $"{ib}:\n";
 
+                    System.Console.WriteLine($"{type} {info.ByteSize}");
+
                     result += $"lea rsi, [rax+rbx*{info.ByteSize}]\n";
                     result += $"sub rsp, {info.ByteSize.Pad(16)}\n";
                     result += $"lea rdi, [rsp]\n";
@@ -840,7 +879,7 @@ public class Generator
 
             result += $"sub rsp, 16\n";
             result += $"mov QWORD [rsp+8], rax\n";
-            result += "inc rax\n"; // guaranteed null terminator
+            result += "add rax, 8\n"; // guaranteed null terminator
             result += $"mov {(Windows ? "rcx" : "rdi")}, rax\n";
             result += $"mov {(Windows ? "rdx" : "rsi")}, {info.ByteSize}\n";
             result += "sub rsp, 32\n";
@@ -884,13 +923,13 @@ public class Generator
             {
                 // TODO: OOB checking
                 result += "mov rax, [rax]\n";
-                result += "mov r12, rax\n";
+                result += "push rax\npush 0\n";
                 result += GenerateExpr(fn, arrAcc.Index);
-                result += "mov rbx, [rsp]\n";
-                result += "mov rax, r12\n";
+                result += "pop rbx\n";
+                result += $"add rsp, 16\n";
+                result += "pop rax\n";
 
                 result += $"lea rax, [rax+rbx*{info.ByteSize}]\n";
-                result += $"add rsp, 16\n";
             }
             else if(accessor is MemberAcc mAcc)
             {
