@@ -22,6 +22,7 @@ public enum TokenType
     From,
     For,
     Until,
+    Type,
 
 
     Link,
@@ -42,4 +43,5 @@ public enum TokenType
     IntLit,
     StrLit,
     BoolLit,
+    Null,
 }

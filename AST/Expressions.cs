@@ -88,6 +88,30 @@ public class IntLit : IExpr
     public override string ToString() { return $"{Value} :: Int"; }
 }
 
+public class ConstructorLit : IExpr
+{
+    public Token Origin;
+    public VType Type { get; set; }
+    public List<(string? Name, IExpr Expr)> Arguments;
+
+    public ConstructorLit(Token origin, VType type, List<(string? Name, IExpr Expr)> arguments)
+    {
+        Origin = origin;
+        Type = type;
+        Arguments = arguments;
+    }
+
+    public override string ToString() { return $"{{\n{string.Join("\n", Arguments.Select(arg => $"{(arg.Name ?? "?")}\n{arg.Expr.ToString().Indent()}")).Indent()}\n}}"; }
+}
+
+public class NullLit : IExpr
+{
+    public VType Type { get; set; }
+    public NullLit() {}
+
+    public override string ToString() { return $"NULL"; }
+}
+
 public class BoolLit : IExpr
 {
     public VType Type { get; set; } = VType.Bool;

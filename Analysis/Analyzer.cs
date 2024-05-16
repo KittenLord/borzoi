@@ -35,6 +35,7 @@ public class Analyzer
         if(TypeExists(vtype.Name, out _)) 
         {
             // TODO: Err
+            throw new System.Exception("AAAAAA");
             return;
         }
 
@@ -243,11 +244,11 @@ public class Analyzer
             type = type.Copy();
             foreach(var accessor in varn.Accessors)
             {
-                if(type.Mods.Count <= 0) 
-                {
-                    Report(Error.CantAccess(type, accessor));
-                    return VType.Invalid;
-                }
+                // if(type.Mods.Count <= 0) 
+                // {
+                //     Report(Error.CantAccess(type, accessor));
+                //     return VType.Invalid;
+                // }
 
                 if(accessor is FuncAcc func)
                 {
@@ -319,6 +320,7 @@ public class Analyzer
                 {
                     var info = type.GetInfo(TypeInfos);
                     var member = info.Members.Find(m => m.Name == mAcc.Member);
+
                     if(!info.Members.Any(m => m.Name == mAcc.Member))
                     {
                         Report(Error.CantAccess(type, accessor));
@@ -329,6 +331,8 @@ public class Analyzer
                 }
                 else throw new System.Exception();
             }
+
+            varn.Type = type;
             return type;
         }
         if(expr is IntLit) return VType.Int;
@@ -446,6 +450,66 @@ public class Analyzer
             binop.LeftType = leftType;
             binop.RightType = rightType;
             return result;
+        }
+        if(expr is ConstructorLit ctor)
+        {
+            if(!TypeExists(ctor.Type.Name, out var type))
+            {
+                Report(Error.UnknownType(ctor.Type.Name, ctor.Origin));
+                return VType.Invalid;
+            }
+
+            var info = type.GetInfo(TypeInfos);
+
+            var sameFormat = ctor.Arguments.Count <= 0 ||
+                ctor.Arguments.All(arg => 
+                    (arg.Name is null) == 
+                    (ctor.Arguments.First().Name is null));
+
+            if(!sameFormat)
+            { Report(Error.ConstructorArgumentsFormat(ctor.Origin)); return VType.Invalid; }
+
+            var explicitNames = ctor.Arguments.Count > 0 && ctor.Arguments.First().Name is not null;
+
+            if(!explicitNames)
+            {
+                if(ctor.Arguments.Count != info.Members.Count)
+                { Report(Error.ConstructorNotEnoughArgs(ctor.Origin)); return VType.Invalid; }
+
+                for(int i = 0; i < ctor.Arguments.Count; i++)
+                {
+                    var ctorExpr = ctor.Arguments[i].Expr;
+                    var mType = info.Members[i].Type;
+
+                    var ctorExprType = FigureOutTheTypeOfAExpr(prefix, ctorExpr, mType);
+                    if(ctorExprType != mType)
+                    { Report(Error.TypeMismatch(mType, ctorExprType, ctor.Origin)); return VType.Invalid; }
+                }
+
+                return ctor.Type;
+            }
+
+            if(!ctor.Arguments.All(arg => info.Members.Any(m => m.Name == arg.Name)))
+            { Report(Error.ConstructorNotEnoughArgs(ctor.Origin)); return VType.Invalid; }
+
+            foreach(var arg in ctor.Arguments)
+            {
+                var member = info.Members.Find(m => m.Name == arg.Name);
+                var argType = FigureOutTheTypeOfAExpr(prefix, arg.Expr, member.Type);
+
+                if(argType != member.Type)
+                { Report(Error.TypeMismatch(member.Type, argType, ctor.Origin)); return VType.Invalid; }
+            }
+
+            var newList = new List<(string? Name, IExpr Expr)>();            
+            foreach(var member in info.Members)
+            {
+                var arg = ctor.Arguments.Find(a => a.Name == member.Name);
+                newList.Add(arg);
+            }
+            ctor.Arguments = newList;
+
+            return ctor.Type;
         }
         throw new System.Exception("dunno");
         return VType.Invalid;
@@ -613,6 +677,57 @@ public class Analyzer
         {
             Report(Error.NoEntryPoint());
             return;
+        }
+
+        List<TypedefNode> workList = new(AST.TypeDefs);
+        int previousAmount = workList.Count;
+
+        while(workList.Count > 0)
+        {
+            List<TypedefNode> figuredOut = new();
+            foreach(var typedef in workList)
+            {
+                if(!typedef.Members.All(member => TypeExists(member.Type.Name, out _)))
+                { continue; }
+
+                var alignment = typedef.Members.Max(m => m.Type.GetInfo(TypeInfos).Alignment);
+
+                var vtype = new VType(typedef.Name);
+
+                var typeinfo = new TypeInfo(0, alignment);
+                
+                int offset = 0;
+                foreach(var member in typedef.Members)
+                {
+                    var minfo = member.Type.GetInfo(TypeInfos);
+
+                    offset = offset.Pad(minfo.Alignment);
+                    typeinfo.Members.Add((member.Name, member.Type, offset));
+                    offset += minfo.ByteSize;
+                }
+                offset = offset.Pad(alignment);
+                typeinfo.ByteSize = offset;
+
+                figuredOut.Add(typedef);
+                RegisterType(vtype, typeinfo);
+            }
+
+            workList.RemoveAll(w => figuredOut.Contains(w));
+
+            // Can't figure out types
+            if(figuredOut.Count <= 0)
+            {
+                Report(Error.CantFigureTypes(workList));
+                return;
+            }
+        }
+
+        foreach(var type in Types)
+        {
+            var info = type.GetInfo(TypeInfos);
+            System.Console.WriteLine($"{type}");
+            System.Console.WriteLine($"{info}");
+            System.Console.WriteLine($"");
         }
 
         var result = FigureOutTypesAndStuff();

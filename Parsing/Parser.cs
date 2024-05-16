@@ -52,6 +52,13 @@ public class Parser
                 // else return;
                 continue;
             }
+            if(Peek().Is(TokenType.Type))
+            {
+                var type = ParseTypedef();
+                if(type is not null) AST.TypeDefs.Add(type);
+                // else return;
+                continue;
+            }
             if(Peek().Is(TokenType.Cfn))
             {
                 var cfn = ParseCFn();
@@ -73,6 +80,48 @@ public class Parser
             }
             return;
         }
+    }
+
+    public TypedefNode? ParseTypedef()
+    {
+        var origin = Pop();
+
+        if(!Peek().Is(TokenType.Id))
+        { Report(Error.Expected([TokenType.Id], Peek())); return null; }
+
+        var name = Pop();
+
+        if(!Peek().Is(TokenType.LCurly))
+        { Report(Error.Expected([TokenType.LCurly], Peek())); return null; }
+        Pop();
+
+
+        List<(VType Type, string Name)> members = new();
+        while(!Peek().Is(TokenType.RCurly))
+        {
+            if(!Peek().Is(TokenType.Id))
+            { Report(Error.Expected([TokenType.Id], Peek())); return null; }
+
+            var mType = ParseType();
+            if(mType is null) { return null; }
+
+            if(!Peek().Is(TokenType.Id))
+            { Report(Error.Expected([TokenType.Id], Peek())); return null; }
+
+            var mName = Pop();
+
+            members.Add((mType, mName.Value));
+
+            if(Peek().Is(TokenType.RCurly)) continue;
+
+            if(!Peek().Is(TokenType.Comma))
+            { Report(Error.Expected([TokenType.Comma], Peek())); return null; }
+            Pop();
+        }
+
+        _ = Pop();
+
+        return new TypedefNode(origin, name.Value, members);
     }
 
     public string? ParseLink()
@@ -563,8 +612,56 @@ public class Parser
         }
         if(Peek().Is(TokenType.Id)) 
         {
-            var varn = new Var(Peek(), Pop().Value);
+            var corigin = Pop();
 
+            if(Peek().Is(TokenType.Not))
+            {
+                _ = Pop();
+
+                if(!Peek().Is(TokenType.LCurly))
+                { Report(Error.Expected([TokenType.LCurly], Peek())); return null; }
+                Pop();
+
+                List<(string? Name, IExpr Expr)> arguments = new();
+                while(!Peek().Is(TokenType.RCurly))
+                {
+                    if(!CanStartLeaf(Peek().Type))
+                    { Report(Error.Expected(LeafTokens, Peek())); return null; }
+
+                    var firstExpr = ParseExpr();
+                    if(firstExpr is null) { return null; }
+
+                    if(Peek().Is(TokenType.Assign))
+                    {
+                        Pop();
+
+                        if(firstExpr is not Var cvarn || cvarn.Accessors.Count > 0)
+                        { throw new System.Exception("todo error"); return null; }
+
+                        if(!CanStartLeaf(Peek().Type))
+                        { Report(Error.Expected(LeafTokens, Peek())); return null; }
+
+                        var secondExpr = ParseExpr();
+                        if(secondExpr is null) { return null; }
+
+                        arguments.Add((cvarn.Name, secondExpr));
+                    }
+                    else { arguments.Add((null, firstExpr)); }
+
+                    if(Peek().Is(TokenType.RCurly)) continue;
+
+                    if(!Peek().Is(TokenType.Comma))
+                    { Report(Error.Expected([TokenType.Comma], Peek())); return null; }
+
+                    Pop();
+                }
+
+                _ = Pop();
+
+                return new ConstructorLit(corigin, new VType(corigin.Value), arguments);
+            }
+
+            var varn = new Var(corigin, corigin.Value);
             TokenType[] acclah = [TokenType.LParen, TokenType.LBrack, TokenType.Period, TokenType.Pointer];
             while(Peek().Is(acclah))
             {

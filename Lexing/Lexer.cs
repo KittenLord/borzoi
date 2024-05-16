@@ -200,6 +200,7 @@ public class Lexer
         if(id == "fn") return Put(TokenType.Fn, id);
         if(id == "cfn") return Put(TokenType.Cfn, id);
         if(id == "from") return Put(TokenType.From, id);
+        if(id == "null") return Put(TokenType.Null, id);
         if(id == "link") return Put(TokenType.Link, id);
         if(id == "call") return Put(TokenType.Call, id);
         if(id == "mut") return Put(TokenType.Mut, id);
@@ -210,6 +211,7 @@ public class Lexer
         if(id == "do") return Put(TokenType.Do, id);
         if(id == "for") return Put(TokenType.For, id);
         if(id == "until") return Put(TokenType.Until, id);
+        if(id == "type") return Put(TokenType.Type, id);
         if(id == "let") 
         {
             if(PeekPred(Eq('@'))) 

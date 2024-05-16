@@ -302,53 +302,15 @@ public class Generator
                 var vari = fn.GetVar(let.Var.WorkingName);
                 var info = vari.Type.GetInfo(AST.TypeInfos);
 
-                if(Optimize && let.Expr is IntLit intlit && !let.Alloc)
-                {
-
-                fnCode += $"mov QWORD [rbp-{vari.Offset}], {intlit.Value}\n";
-
-                }
-                else if(Optimize && let.Expr is BoolLit boollit && !let.Alloc)
-                {
-
-                fnCode += $"mov BYTE [rbp-{vari.Offset}], {(boollit.Value ? 1 : 0)}\n";
-
-                }
-                else
-                {
-
                 fnCode += GenerateExpr(fn, let.Expr);
 
                 if(!let.Alloc)
                 {
-
-                    if(Optimize && let.Expr.Type.GetInfo(AST.TypeInfos).ByteSize == 8)
-                    {
-
-                        fnCode += "pop rax\n";
-                        fnCode += $"mov [rbp-{vari.Offset}], rax\n";
-                        fnCode += $"add rsp, 8\n";
-
-                    }
-                    else if(Optimize && let.Expr.Type.GetInfo(AST.TypeInfos).ByteSize == 16)
-                    {
-
-                        fnCode += "pop rax\n";
-                        fnCode += $"mov [rbp-{vari.Offset}], rax\n";
-                        fnCode += "pop rax\n";
-                        fnCode += $"mov [rbp-{vari.Offset}+8], rax\n";
-
-                    }
-                    else
-                    {
-
-                        fnCode += $"lea rsi, [rsp]\n"; // source
-                        fnCode += $"lea rdi, [rbp-{vari.Offset}]\n"; // destination
-                        fnCode += $"mov rcx, {info.ByteSize}\n"; // length
-                        fnCode += $"rep movsb\n"; // pretty much memcpy
-                        fnCode += $"add rsp, {info.ByteSize.Pad(16)}\n";
-
-                    }
+                    fnCode += $"lea rsi, [rsp]\n"; // source
+                    fnCode += $"lea rdi, [rbp-{vari.Offset}]\n"; // destination
+                    fnCode += $"mov rcx, {info.ByteSize}\n"; // length
+                    fnCode += $"rep movsb\n"; // pretty much memcpy
+                    fnCode += $"add rsp, {info.ByteSize.Pad(16)}\n";
                 }
                 else
                 {
@@ -366,7 +328,6 @@ public class Generator
                     fnCode += $"mov [rbp-{vari.Offset}], rax\n";
                 }
 
-                }
             }
             else if(line is CallNode call)
             {
@@ -607,29 +568,11 @@ public class Generator
                     : sv.Offset;
                 var op = isArg ? "+" : "-";
 
-                if(Optimize && info.ByteSize % 8 == 0)
-                {
-
-                if((info.ByteSize / 8) % 2 == 1) 
-                    result += "push 0\n";
-                for(int i = info.ByteSize / 8 - 1; i >= 0; i--)
-                {
-
-                    result += $"push QWORD [rbp{op}{index}+{i * 8}]\n";
-
-                }
-
-                }
-                else
-                {
-
                 result += $"sub rsp, {info.ByteSize.Pad(16)}\n";
                 result += $"lea rsi, [rbp{op}{index}]\n";
                 result += $"lea rdi, [rsp]\n";
                 result += $"mov rcx, {info.ByteSize}\n";
                 result += $"rep movsb\n";
-
-                }
 
             }
             else if(varl.Accessors.First() is FuncAcc func)
@@ -709,10 +652,14 @@ public class Generator
                         {
                             var offset = offsets.Sum() + extraOffset;
                             var argInfo = func.Args[i].Type.GetInfo(AST.TypeInfos);
+
+                            System.Console.WriteLine($"FN CALL {cfn.Name} {func.Args[i].Type} {argInfo}");
+
                             var byPointer = !nonPointerSizes.Contains(argInfo.ByteSize);
                             if(func.Args[i].Type.Is<VArray>()) byPointer = false;
                             var op = byPointer ? "lea" : "mov";
 
+                            // FIXME: Figure out what to do with non 8byte values
                             if(i == 0)      result += $"{op} rcx, [rsp+{offset}]\n";
                             else if(i == 1) result += $"{op} rdx, [rsp+{offset}]\n";
                             else if(i == 2) result += $"{op} r8, [rsp+{offset}]\n";
@@ -754,11 +701,12 @@ public class Generator
                 first = false;
 
                 var tinfo = type.GetInfo(AST.TypeInfos);
-                type.RemoveLastMod();
-                var info = type.GetInfo(AST.TypeInfos);
             
                 if(accessor is PointerAcc)
                 {
+                    type.RemoveLastMod();
+                    var info = type.GetInfo(AST.TypeInfos);
+
                     result += $"pop rax\n";
                     result += "add rsp, 8\n";
                     result += $"sub rsp, {info.ByteSize.Pad(16)}\n";
@@ -769,11 +717,15 @@ public class Generator
                 }
                 else if(accessor is ArrayAcc arr)
                 {
+                    type.RemoveLastMod();
+                    var info = type.GetInfo(AST.TypeInfos);
+
                     var oob = GetLabel("OutOfBounds");
                     var ib = GetLabel("InBounds");
 
                     result += GenerateExpr(fn, arr.Index);
                     result += "pop rbx\n"; // Index
+
                     result += "add rsp, 8\n";
                     result += $"pop rax\n"; // Address
                     // result += "add rsp, 8\n";
@@ -804,7 +756,12 @@ public class Generator
                 }
                 else if(accessor is MemberAcc mAcc)
                 {
+                    System.Console.WriteLine($"{type}");
+                    System.Console.WriteLine($"{tinfo}");
+
                     var member = tinfo.Members.Find(m => m.Name == mAcc.Member);
+                    type = member.Type;
+
                     var minfo = member.Type.GetInfo(AST.TypeInfos);
                     var msize = minfo.ByteSize.Pad(16);
                     var tsize = tinfo.ByteSize.Pad(16);
@@ -820,7 +777,7 @@ public class Generator
                     // to store the member
                     // This is verbose (m+t-m), but I think it's needed here
                     result += $"lea rdi, [rsp+{msize+tsize-msize}]\n";
-                    result += $"mov rcx, {msize}\n";
+                    result += $"mov rcx, {minfo.ByteSize}\n";
                     result += "rep movsb\n";
                     result += $"add rsp, {msize+tsize-msize}\n";
                 }
@@ -867,6 +824,43 @@ public class Generator
                 result += $"add rsp, {info.ByteSize.Pad(16)}\n";
             }
         }
+        else if(expr is ConstructorLit ctor)
+        {
+            var type = ctor.Type;
+            var info = type.GetInfo(AST.TypeInfos);
+            var size = info.ByteSize.Pad(16);
+
+            System.Console.WriteLine($"{type}");
+            System.Console.WriteLine($"{info}");
+            System.Console.WriteLine($"{size}");
+
+            var stackFrame = info.Members.Sum(m => m.Type.GetInfo(AST.TypeInfos).ByteSize.Pad(16));
+            Queue<int> offsets = new();
+            foreach(var arg in ctor.Arguments)
+            {
+                offsets.Enqueue(arg.Expr.Type.GetInfo(AST.TypeInfos).ByteSize.Pad(16));
+                result += GenerateExpr(fn, arg.Expr);
+            }
+            if(offsets.Count > 0) offsets.Dequeue();
+
+            result += $"sub rsp, {size}\n";
+
+            foreach(var member in info.Members)
+            {
+                var offset = offsets.Sum() + size;
+                result += $"lea rdi, [rsp+{member.Offset}]\n";
+                result += $"lea rsi, [rsp+{offset}]\n";
+                result += $"mov rcx, {member.Type.GetInfo(AST.TypeInfos).ByteSize}\n";
+                result += "rep movsb\n";
+                if(offsets.Count > 0) offsets.Dequeue();
+            }
+
+            result += $"lea rsi, [rsp]\n";
+            result += $"lea rdi, [rsp+{stackFrame}]\n";
+            result += $"mov rcx, {info.ByteSize}\n";
+            result += "rep movsb\n";
+            result += $"add rsp, {stackFrame}\n";
+        }
         else if(expr is ArrayInitOp arrinit)
         {
             var type = arrinit.Type!.Copy();
@@ -908,7 +902,7 @@ public class Generator
         var op = isArg ? "+" : "-";
         result += $"lea rax, [rbp{op}{index}]\n";
 
-        var type = expr.Type.Copy();
+        var type = sv.Type.Copy();
         foreach(var accessor in expr.Accessors)
         {
             type.RemoveLastMod();

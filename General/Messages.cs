@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 
 public class Message
@@ -56,6 +57,21 @@ namespace Borzoi.Analysis.Msg
     // TODO: Add message positions for some errors that I was too lazy to implement
     public static class Error
     {
+        public static Message CantFigureTypes(List<Borzoi.ASTn.TypedefNode> types) =>
+        new Message(
+            $"Cannot figure out types. There is most probably a circular reference somewhere among there types: {string.Join(", ", types.Select(t => t.Name))}",
+            types.First().Origin);
+
+        public static Message ConstructorArgumentsFormat(Token token) =>
+        new Message(
+            $"Constructor's arguments must either all be explicitly named, or all unnamed",
+            token);
+
+        public static Message ConstructorNotEnoughArgs(Token token) =>
+        new Message(
+            $"Constructor doesn't cover all the members",
+            token);
+
         public static Message AlreadyExists(string name, Token original, Token repeat) =>
         new Message(
             $"Id {name} has been already defined at {original.ToString("")}",

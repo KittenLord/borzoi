@@ -53,6 +53,23 @@ public class CFndefNode
     { return $"cfn {Name}{(CNameT is not null ? $" ({CName})" : "")} :: ({string.Join(" , ", Args.Select(a => a.vararg ? "*" : $"{(a.Name ?? "---")} :: {a.Type}"))}) -> {(RetType)}\n"; }
 }
 
+public class TypedefNode 
+{
+    public string Name;
+    public Token Origin;
+
+    public List<(VType Type, string Name)> Members;
+
+    public TypedefNode(Token origin, string name, List<(VType Type, string Name)> members)
+    {
+        Origin = origin;
+        Name = name;
+        Members = members;
+    }
+
+    public override string ToString() { return $"TYPE {Name}\n{string.Join("\n", Members.Select(m => $"{m.Name} :: {m.Type}")).Indent()}"; }
+}
+
 public class FndefNode : IContainer
 {
     public string Name => NameT.Value;
@@ -135,11 +152,13 @@ public class AST
     public List<FndefNode> Fndefs;
     public List<CFndefNode> CFndefs;
     public List<string> Links;
+    public List<TypedefNode> TypeDefs;
 
     public Dictionary<string, TypeInfo> TypeInfos;
 
     public AST()
     {
+        TypeDefs = new();
         Identifiers = new();
         Fndefs = new();
         CFndefs = new();
@@ -148,5 +167,5 @@ public class AST
     }
 
     public override string ToString() { return 
-        $"{string.Join("\n", Fndefs)}\n\n{string.Join("\n", CFndefs)}\n\nlinks: [ {string.Join(", ", Links.Select(l => $"\"{l}\""))} ]"; }
+        $"{string.Join("\n", Fndefs)}\n\n{string.Join("\n", CFndefs)}\n\nlinks: [ {string.Join(", ", Links.Select(l => $"\"{l}\""))} ]\n\n{string.Join("\n", TypeDefs)}"; }
 }

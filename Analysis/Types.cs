@@ -59,8 +59,10 @@ public class TypeInfo
 
     public TypeInfo(int bs, int al = -1) { ByteSize = bs; Alignment = al < 0 ? ByteSize : al; }
 
+    public override string ToString() { return $"{ByteSize} | {Alignment}\n{string.Join("\n", Members.Select(member => $"{member.Name} :: {member.Type} // {member.Offset}")).Indent()}"; }
+
     public static readonly TypeInfo Pointer = new(Settings.Bytes);
-    public static readonly TypeInfo Array = new(Settings.Bytes * 2) { Members = { 
+    public static readonly TypeInfo Array = new(Settings.Bytes * 2, 8) { Members = { 
         ( "ptr", VType.Void.Modify(VTypeMod.Pointer()), 0 ), 
         ( "len", VType.Int, 8 ), 
     }};
