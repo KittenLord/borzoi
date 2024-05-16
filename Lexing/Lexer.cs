@@ -307,9 +307,13 @@ public class Lexer
         var itoken = Put(TokenType.IntLit, nums.str());
 
         itoken.IntValue = i;
+        itoken.FloatValue = (float)i;
+        itoken.DoubleValue = (double)i;
         if(itoken.IntValue <= byte.MaxValue) itoken.PossibleTypes.Add(VType.Byte);
         if(itoken.IntValue <= int.MaxValue) itoken.PossibleTypes.Add(VType.I32);
         if(itoken.IntValue <= long.MaxValue) itoken.PossibleTypes.Add(VType.Int);
+        itoken.PossibleTypes.Add(VType.Float);
+        itoken.PossibleTypes.Add(VType.Double);
 
         return itoken;
     }

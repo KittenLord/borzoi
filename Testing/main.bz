@@ -2,13 +2,6 @@ link "raylib"
 link "gdi32"
 link "winmm"
 
-cfn InitWindow(int w, int h, byte[] title)
-cfn WindowShouldClose() bool
-cfn BeginDrawing()
-cfn EndDrawing()
-cfn ClearBackground(color c)
-cfn SetTargetFPS(int fps)
-
 cfn printf(byte[] fmt, *) i32
 
 type color {
@@ -18,16 +11,57 @@ type color {
     byte a
 }
 
+type texture {
+    i32 id,
+    i32 width,
+    i32 height,
+    i32 mipmaps,
+    i32 format
+}
+
+type rectangle {
+    float x,
+    float y,
+    float width,
+    float height
+}
+
+type vec2 {
+    float x,
+    float y
+}
+
+cfn InitWindow(int w, int h, byte[] title)
+cfn WindowShouldClose() bool
+cfn BeginDrawing()
+cfn EndDrawing()
+cfn ClearBackground(color c)
+cfn SetTargetFPS(int fps)
+
+cfn LoadTexture(byte[] path) texture
+cfn DrawTextureRec(texture t, rectangle r, vec2 pos, color c)
+
 fn main() {
     call InitWindow(800, 450, "Minesweeper")
     call SetTargetFPS(60)
 
-    let color bg = color!{ 255, 255, 0, 255 }
+    let color bg = color!{ 200, 200, 200, 255 }
+
+    let texture _1 = LoadTexture("assets/1.png")
+    let texture _2 = LoadTexture("assets/2.png")
+    let texture _3 = LoadTexture("assets/3.png")
+    let texture _4 = LoadTexture("assets/4.png")
+    let texture _5 = LoadTexture("assets/5.png")
+    let texture _6 = LoadTexture("assets/6.png")
+    let texture _7 = LoadTexture("assets/7.png")
+    let texture _8 = LoadTexture("assets/8.png")
 
     while !WindowShouldClose() {
         call BeginDrawing()
 
             call ClearBackground(bg)
+
+            call DrawTextureRec(_1, rectangle!{0,0,100,100}, vec2!{0,0}, color!{255,255,255,255})
 
         call EndDrawing()
     }

@@ -13,10 +13,8 @@ extern EndDrawing
 extern ClearBackground
 extern SetTargetFPS
 section .data
-STR_0@@: db 37,100,10,10,10,0
-STR_0@@LEN: dq 5
-STR_1@@: db 77,105,110,101,115,119,101,101,112,101,114,0
-STR_1@@LEN: dq 11
+STR_0@@: db 77,105,110,101,115,119,101,101,112,101,114,0
+STR_0@@LEN: dq 11
 error@@OutOfBounds: db "You a big stupid, the array has only %d elements and you're trying to access index %d? Are you crazy?!",0xA,0
 error@@SEGFAULT: db "Oopsie daisy, a segfowolt has occurred",0xA,0
 gclen@@: dq -1
@@ -148,34 +146,7 @@ push rbp
 mov rbp, rsp
 sub rsp, 16
 call gcframe@@
-push 0
-push 76
-push 0
-push 70
-mov rax, [rsp+16]
-mov rbx, [rsp]
-add rsp, 16
-xor rdx, rdx
-cqo
-idiv rbx
-mov rax, rdx
-add rax, rbx
-xor rdx, rdx
-cqo
-idiv rbx
-mov rax, rdx
-mov [rsp], rax
-lea rsi, [rsp]
-lea rdi, [rbp-8]
-mov rcx, 8
-rep movsb
-add rsp, 16
-sub rsp, 16
-sub rsp, 16
-lea rsi, [rbp-8]
-lea rdi, [rsp]
-mov rcx, 8
-rep movsb
+sub rsp, 0
 mov rdi, [rel STR_0@@LEN]
 mov rsi, 1
 mov rdx, 1
@@ -192,31 +163,6 @@ call gcpush@@
 mov rdi, r12
 mov rsi, STR_0@@
 mov rcx, [rel STR_0@@LEN]
-rep movsb
-mov rdx, [rsp+16]
-mov rcx, [rsp+0]
-sub rsp, 32
-call printf
-add rsp, 64
-mov [rsp], rax
-add rsp, 16
-sub rsp, 0
-mov rdi, [rel STR_1@@LEN]
-mov rsi, 1
-mov rdx, 1
-push rdi
-push 0
-add rdi, 8
-mov rcx, rdi
-sub rsp, 32
-call calloc
-add rsp, 32
-mov [rsp], rax
-mov r12, rax
-call gcpush@@
-mov rdi, r12
-mov rsi, STR_1@@
-mov rcx, [rel STR_1@@LEN]
 rep movsb
 push 0
 push 450
@@ -238,11 +184,11 @@ call SetTargetFPS
 add rsp, 48
 add rsp, 0
 push 0
-push 255
+push 200
 push 0
-push 255
+push 200
 push 0
-push 0
+push 200
 push 0
 push 255
 sub rsp, 16
@@ -268,11 +214,11 @@ mov rcx, 4
 rep movsb
 add rsp, 64
 lea rsi, [rsp]
-lea rdi, [rbp-12]
+lea rdi, [rbp-4]
 mov rcx, 4
 rep movsb
 add rsp, 16
-_do$$$2:
+_do$$$1:
 sub rsp, 16
 sub rsp, 32
 call WindowShouldClose
@@ -281,14 +227,14 @@ mov [rsp], rax
 pop rax
 cmp rax, 0
 push 1
-je _not$$$3
+je _not$$$2
 add rsp, 8
 push 0
-_not$$$3:
+_not$$$2:
 mov rax, [rsp]
 add rsp, 16
 cmp rax, 1
-jne _endwhile$$$1
+jne _endwhile$$$0
 call gcframe@@
 sub rsp, 0
 sub rsp, 32
@@ -297,7 +243,7 @@ add rsp, 32
 add rsp, 0
 sub rsp, 0
 sub rsp, 16
-lea rsi, [rbp-12]
+lea rsi, [rbp-4]
 lea rdi, [rsp]
 mov rcx, 4
 rep movsb
@@ -312,8 +258,8 @@ call EndDrawing
 add rsp, 32
 add rsp, 0
 call gcclear@@
-jmp _do$$$2
-_endwhile$$$1:
+jmp _do$$$1
+_endwhile$$$0:
 call gcclear@@
 mov rsp, rbp
 pop rbp
