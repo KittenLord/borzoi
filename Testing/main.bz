@@ -1,18 +1,34 @@
-cfn printf(byte[], *) int
+link "raylib"
+link "gdi32"
+link "winmm"
 
-type vec {
-    int x,
-    int y
-}
+cfn InitWindow(int w, int h, byte[] title)
+cfn WindowShouldClose() bool
+cfn BeginDrawing()
+cfn EndDrawing()
+cfn ClearBackground(color c)
+cfn SetTargetFPS(int fps)
 
-fn vsum(vec a, vec b) vec {
-    ret vec!{a.x + b.x, a.y + b.y}
+cfn printf(byte[] fmt, *) i32
+
+type color {
+    byte r,
+    byte g,
+    byte b,
+    byte a
 }
 
 fn main() {
-    let vec v1 = vec!{x=10, y=55}
-    let vec v2 = vec!{x=410, y=14}
-    let vec v = vsum(v1, v2)
+    call InitWindow(800, 450, "Minesweeper")
+    call SetTargetFPS(60)
 
-    call printf("%d, %d", v.x, v.y)
+    let color bg = color!{ 255, 255, 0, 255 }
+
+    while !WindowShouldClose() {
+        call BeginDrawing()
+
+            call ClearBackground(bg)
+
+        call EndDrawing()
+    }
 }

@@ -6,9 +6,17 @@ extern free
 extern printf
 extern ExitProcess
 extern signal
+extern InitWindow
+extern WindowShouldClose
+extern BeginDrawing
+extern EndDrawing
+extern ClearBackground
+extern SetTargetFPS
 section .data
-STR_0@@: db 37,100,44,32,37,100,0
-STR_0@@LEN: dq 6
+STR_0@@: db 37,100,10,10,10,0
+STR_0@@LEN: dq 5
+STR_1@@: db 77,105,110,101,115,119,101,101,112,101,114,0
+STR_1@@LEN: dq 11
 error@@OutOfBounds: db "You a big stupid, the array has only %d elements and you're trying to access index %d? Are you crazy?!",0xA,0
 error@@SEGFAULT: db "Oopsie daisy, a segfowolt has occurred",0xA,0
 gclen@@: dq -1
@@ -27,6 +35,10 @@ mov rcx, 11
 mov rdx, handler@@sigsegv
 call signal
 sub rsp, 32
+mov QWORD [rsp], 0
+mov QWORD [rsp+8], 0
+ mov QWORD [rsp+16], 0
+mov QWORD [rsp+24], 0
 call main@@
 mov rcx, [rsp]
 call ExitProcess
@@ -131,218 +143,39 @@ mov [rel gclen@@], rbx
 .gctrypop@@exit:
 pop rbp
 ret
-vsum:
-push rbp
-mov rbp, rsp
-sub rsp, 0
-call gcframe@@
-sub rsp, 16
-lea rsi, [rbp+16]
-lea rdi, [rsp]
-mov rcx, 16
-rep movsb
-lea rsi, [rsp+0]
-sub rsp, 16
-lea rdi, [rsp]
-mov rcx, 8
-rep movsb
-lea rsi, [rsp]
-lea rdi, [rsp+16]
-mov rcx, 8
-rep movsb
-add rsp, 16
-sub rsp, 16
-lea rsi, [rbp+32]
-lea rdi, [rsp]
-mov rcx, 16
-rep movsb
-lea rsi, [rsp+0]
-sub rsp, 16
-lea rdi, [rsp]
-mov rcx, 8
-rep movsb
-lea rsi, [rsp]
-lea rdi, [rsp+16]
-mov rcx, 8
-rep movsb
-add rsp, 16
-mov rax, [rsp+16]
-mov rbx, [rsp]
-add rsp, 16
-add rax, rbx
-mov [rsp], rax
-sub rsp, 16
-lea rsi, [rbp+16]
-lea rdi, [rsp]
-mov rcx, 16
-rep movsb
-lea rsi, [rsp+8]
-sub rsp, 16
-lea rdi, [rsp]
-mov rcx, 8
-rep movsb
-lea rsi, [rsp]
-lea rdi, [rsp+16]
-mov rcx, 8
-rep movsb
-add rsp, 16
-sub rsp, 16
-lea rsi, [rbp+32]
-lea rdi, [rsp]
-mov rcx, 16
-rep movsb
-lea rsi, [rsp+8]
-sub rsp, 16
-lea rdi, [rsp]
-mov rcx, 8
-rep movsb
-lea rsi, [rsp]
-lea rdi, [rsp+16]
-mov rcx, 8
-rep movsb
-add rsp, 16
-mov rax, [rsp+16]
-mov rbx, [rsp]
-add rsp, 16
-add rax, rbx
-mov [rsp], rax
-sub rsp, 16
-lea rdi, [rsp+0]
-lea rsi, [rsp+32]
-mov rcx, 8
-rep movsb
-lea rdi, [rsp+8]
-lea rsi, [rsp+16]
-mov rcx, 8
-rep movsb
-lea rsi, [rsp]
-lea rdi, [rsp+32]
-mov rcx, 16
-rep movsb
-add rsp, 32
-lea rdi, [rbp+48]
-lea rsi, [rsp]
-mov rcx, 16
-rep movsb
-call gcclear@@
-mov rsp, rbp
-pop rbp
-ret
-call gcclear@@
-mov rsp, rbp
-pop rbp
-ret
 main@@:
 push rbp
 mov rbp, rsp
-sub rsp, 48
+sub rsp, 16
 call gcframe@@
 push 0
-push 10
+push 76
 push 0
-push 55
-sub rsp, 16
-lea rdi, [rsp+0]
-lea rsi, [rsp+32]
+push 70
+mov rax, [rsp+16]
+mov rbx, [rsp]
+add rsp, 16
+xor rdx, rdx
+cqo
+idiv rbx
+mov rax, rdx
+add rax, rbx
+xor rdx, rdx
+cqo
+idiv rbx
+mov rax, rdx
+mov [rsp], rax
+lea rsi, [rsp]
+lea rdi, [rbp-8]
 mov rcx, 8
 rep movsb
-lea rdi, [rsp+8]
-lea rsi, [rsp+16]
-mov rcx, 8
-rep movsb
-lea rsi, [rsp]
-lea rdi, [rsp+32]
-mov rcx, 16
-rep movsb
-add rsp, 32
-lea rsi, [rsp]
-lea rdi, [rbp-16]
-mov rcx, 16
-rep movsb
-add rsp, 16
-push 0
-push 410
-push 0
-push 14
-sub rsp, 16
-lea rdi, [rsp+0]
-lea rsi, [rsp+32]
-mov rcx, 8
-rep movsb
-lea rdi, [rsp+8]
-lea rsi, [rsp+16]
-mov rcx, 8
-rep movsb
-lea rsi, [rsp]
-lea rdi, [rsp+32]
-mov rcx, 16
-rep movsb
-add rsp, 32
-lea rsi, [rsp]
-lea rdi, [rbp-32]
-mov rcx, 16
-rep movsb
-add rsp, 16
-sub rsp, 16
-sub rsp, 32
-sub rsp, 16
-lea rsi, [rbp-32]
-lea rdi, [rsp]
-mov rcx, 16
-rep movsb
-lea rdi, [rsp+32]
-lea rsi, [rsp]
-mov rcx, 16
-rep movsb
-add rsp, 16
-sub rsp, 16
-lea rsi, [rbp-16]
-lea rdi, [rsp]
-mov rcx, 16
-rep movsb
-lea rdi, [rsp+16]
-lea rsi, [rsp]
-mov rcx, 16
-rep movsb
-add rsp, 16
-call vsum
-add rsp, 32
-lea rsi, [rsp]
-lea rdi, [rbp-48]
-mov rcx, 16
-rep movsb
 add rsp, 16
 sub rsp, 16
 sub rsp, 16
-lea rsi, [rbp-48]
-lea rdi, [rsp]
-mov rcx, 16
-rep movsb
-lea rsi, [rsp+8]
-sub rsp, 16
+lea rsi, [rbp-8]
 lea rdi, [rsp]
 mov rcx, 8
 rep movsb
-lea rsi, [rsp]
-lea rdi, [rsp+16]
-mov rcx, 8
-rep movsb
-add rsp, 16
-sub rsp, 16
-lea rsi, [rbp-48]
-lea rdi, [rsp]
-mov rcx, 16
-rep movsb
-lea rsi, [rsp+0]
-sub rsp, 16
-lea rdi, [rsp]
-mov rcx, 8
-rep movsb
-lea rsi, [rsp]
-lea rdi, [rsp+16]
-mov rcx, 8
-rep movsb
-add rsp, 16
 mov rdi, [rel STR_0@@LEN]
 mov rsi, 1
 mov rdx, 1
@@ -360,14 +193,127 @@ mov rdi, r12
 mov rsi, STR_0@@
 mov rcx, [rel STR_0@@LEN]
 rep movsb
-mov r8, [rsp+32]
 mov rdx, [rsp+16]
 mov rcx, [rsp+0]
 sub rsp, 32
 call printf
-add rsp, 80
+add rsp, 64
 mov [rsp], rax
 add rsp, 16
+sub rsp, 0
+mov rdi, [rel STR_1@@LEN]
+mov rsi, 1
+mov rdx, 1
+push rdi
+push 0
+add rdi, 8
+mov rcx, rdi
+sub rsp, 32
+call calloc
+add rsp, 32
+mov [rsp], rax
+mov r12, rax
+call gcpush@@
+mov rdi, r12
+mov rsi, STR_1@@
+mov rcx, [rel STR_1@@LEN]
+rep movsb
+push 0
+push 450
+push 0
+push 800
+mov r8, [rsp+32]
+mov rdx, [rsp+16]
+mov rcx, [rsp+0]
+sub rsp, 32
+call InitWindow
+add rsp, 80
+add rsp, 0
+sub rsp, 0
+push 0
+push 60
+mov rcx, [rsp+0]
+sub rsp, 32
+call SetTargetFPS
+add rsp, 48
+add rsp, 0
+push 0
+push 255
+push 0
+push 255
+push 0
+push 0
+push 0
+push 255
+sub rsp, 16
+lea rdi, [rsp+0]
+lea rsi, [rsp+64]
+mov rcx, 1
+rep movsb
+lea rdi, [rsp+1]
+lea rsi, [rsp+48]
+mov rcx, 1
+rep movsb
+lea rdi, [rsp+2]
+lea rsi, [rsp+32]
+mov rcx, 1
+rep movsb
+lea rdi, [rsp+3]
+lea rsi, [rsp+16]
+mov rcx, 1
+rep movsb
+lea rsi, [rsp]
+lea rdi, [rsp+64]
+mov rcx, 4
+rep movsb
+add rsp, 64
+lea rsi, [rsp]
+lea rdi, [rbp-12]
+mov rcx, 4
+rep movsb
+add rsp, 16
+_do$$$2:
+sub rsp, 16
+sub rsp, 32
+call WindowShouldClose
+add rsp, 32
+mov [rsp], rax
+pop rax
+cmp rax, 0
+push 1
+je _not$$$3
+add rsp, 8
+push 0
+_not$$$3:
+mov rax, [rsp]
+add rsp, 16
+cmp rax, 1
+jne _endwhile$$$1
+call gcframe@@
+sub rsp, 0
+sub rsp, 32
+call BeginDrawing
+add rsp, 32
+add rsp, 0
+sub rsp, 0
+sub rsp, 16
+lea rsi, [rbp-12]
+lea rdi, [rsp]
+mov rcx, 4
+rep movsb
+mov rcx, [rsp+0]
+sub rsp, 32
+call ClearBackground
+add rsp, 48
+add rsp, 0
+sub rsp, 0
+sub rsp, 32
+call EndDrawing
+add rsp, 32
+add rsp, 0
+call gcclear@@
+jmp _do$$$2
+_endwhile$$$1:
 call gcclear@@
 mov rsp, rbp
 pop rbp

@@ -29,9 +29,6 @@ public class Lexer
     private bool CanStartId(char c) => char.IsLetter(c) || "_".Contains(c);
     private bool CanBeId(char c) => char.IsLetterOrDigit(c) || "_".Contains(c);
 
-    private bool CanStartNum(char c) => char.IsDigit(c);
-    private bool CanBeNum(char c) => char.IsDigit(c);
-
     private Func<char, bool> Eq(params char[] cs) => (c) => cs.Any(cx => cx == c);
 
     private Token Put(TokenType type, char c) => Put(type, c.ToString());
@@ -87,7 +84,6 @@ public class Lexer
         if(PeekPred(Eq('-'))) return Put(TokenType.Minus, Popc());
         if(PeekPred(Eq('*'))) return Put(TokenType.Mul, Popc());
         if(PeekPred(Eq('/'))) return Put(TokenType.Div, Popc());
-        if(PeekPred(Eq('%'))) return Put(TokenType.Mod, Popc());
         if(PeekPred(Eq(','))) return Put(TokenType.Comma, Popc());
         if(PeekPred(Eq('.'))) return Put(TokenType.Period, Popc());
         if(PeekPred(Eq('@'))) return Put(TokenType.Pointer, Popc());
@@ -99,7 +95,7 @@ public class Lexer
         if(PeekPred(Eq('['))) return Put(TokenType.LBrack, Popc());
         if(PeekPred(Eq(']'))) return Put(TokenType.RBrack, Popc());
 
-        if(PeekPred(Eq('=', '<', '>', '!', '&'))) return ReadOperator();
+        if(PeekPred(Eq('=', '<', '>', '!', '&', '%'))) return ReadOperator();
 
         Popc();
         return Put(TokenType.Illegal);
@@ -147,6 +143,14 @@ public class Lexer
 
     private Token ReadOperator()
     {
+        if(PeekPred(Eq('%')))
+        {
+            Popc();
+            if(PeekPred(Eq('%')))
+            { Popc(); return Put(TokenType.Modt, "%%"); }
+            return Put(TokenType.Mod, "%");
+        }
+
         if(PeekPred(Eq('&')))
         {
             Popc();
@@ -228,14 +232,85 @@ public class Lexer
         return Put(TokenType.Id, id);
     }
 
+    private bool CanStartNum(char c) => char.IsDigit(c);
+    private bool CanBeNum(char c) => char.IsDigit(c);
+
     private Token ReadNumber()
     {
         var nums = new List<char>();
-        while(PeekPred(CanBeNum)) nums.Add(Popc());
+        var init = Popc();
+        if(init == '0' && PeekPred("x"))
+        {
+            Popc();
+            while(PeekPred("0123456789aAbBcCdDfF")) 
+            {
+                nums.Add(Popc());
+            }
 
-        var result = int.TryParse(nums.str(), out var i);
-        var token = Put(TokenType.IntLit, nums.str());
-        token.IntValue = i;
-        return token;
+            if(nums.Count > 16)
+            { 
+                var illhex = Put(TokenType.Illegal, nums.str()); 
+                Report(Error.NumberLiteralTooLong(illhex));
+                return illhex;
+            }
+
+            var token = Put(TokenType.IntLit, "0x" + nums.str());
+
+            var byteArray = nums.Select(c => {
+                if(char.IsDigit(c)) return (byte)(c - 48);
+                if(char.IsUpper(c)) c = (char)(c + 20);
+                return (byte)(c - 51);
+            }).ToArray();
+
+            if(byteArray.Length <= 2) token.IntValue = BitConverter.ToChar(byteArray);
+            else if(byteArray.Length <= 8) token.IntValue = BitConverter.ToInt32(byteArray);
+            else token.IntValue = BitConverter.ToInt64(byteArray);
+
+            if(byteArray.Length <= 2) token.PossibleTypes.Add(VType.Byte);
+            if(byteArray.Length <= 8) token.PossibleTypes.Add(VType.I32);
+            if(byteArray.Length <= 16) token.PossibleTypes.Add(VType.Int);
+
+            return token;
+        }
+
+        nums.Add(init);
+        while(PeekPred(CanBeNum)) nums.Add(Popc());
+        if(PeekPred("."))
+        {
+            // do while looks too ugly
+            nums.Add(Popc());
+            while(PeekPred(CanBeNum)) nums.Add(Popc());
+
+            if(nums.Last() == '.')
+            {
+                var t1 = Put(TokenType.Illegal, nums.str());
+                Report(Error.FloatWrongFormat(t1));
+                return t1;
+            }
+
+            if(!double.TryParse(nums.str(), out var f))
+            {
+                var t2 = Put(TokenType.Illegal, nums.str());
+                Report(Error.FloatWrongFormat(t2));
+                return t2;
+            }
+
+            var token = Put(TokenType.IntLit, nums.str());
+            token.DoubleValue = f;
+            token.FloatValue = (float)f;
+            token.PossibleTypes.Add(VType.Double);
+            token.PossibleTypes.Add(VType.Float);
+            return token;
+        }
+
+        var result = long.TryParse(nums.str(), out var i);
+        var itoken = Put(TokenType.IntLit, nums.str());
+
+        itoken.IntValue = i;
+        if(itoken.IntValue <= byte.MaxValue) itoken.PossibleTypes.Add(VType.Byte);
+        if(itoken.IntValue <= int.MaxValue) itoken.PossibleTypes.Add(VType.I32);
+        if(itoken.IntValue <= long.MaxValue) itoken.PossibleTypes.Add(VType.Int);
+
+        return itoken;
     }
 }

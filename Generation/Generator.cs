@@ -94,6 +94,7 @@ public class Generator
         "call signal\n" +
 
         "sub rsp, 32\n" +
+        "mov QWORD [rsp], 0\nmov QWORD [rsp+8], 0\n mov QWORD [rsp+16], 0\nmov QWORD [rsp+24], 0\n" +
         "call main@@\n" +
         (Windows ? "mov rcx, [rsp]\ncall ExitProcess\n" : "") +
         "mov rbx, [rsp]\n" +
@@ -480,6 +481,16 @@ public class Generator
                     TokenType.Mul => "xor rdx, rdx\nimul rbx\n",
                     TokenType.Div => "xor rdx, rdx\ncqo\nidiv rbx\n",
                     TokenType.Mod => "xor rdx, rdx\ncqo\nidiv rbx\nmov rax, rdx\n",
+                    TokenType.Modt => 
+                        "xor rdx, rdx\n" +
+                        "cqo\n" + 
+                        "idiv rbx\n" +
+                        "mov rax, rdx\n" +
+                        "add rax, rbx\n" + 
+                        "xor rdx, rdx\n" +
+                        "cqo\n" + 
+                        "idiv rbx\n" +
+                        "mov rax, rdx\n",
 
                     TokenType.Eq => $"cmp rax, rbx\nmov rax, 1\nje {label}\nmov rax, 0\n{label}:\n",
                     TokenType.Neq => $"cmp rax, rbx\nmov rax, 1\njne {label}\nmov rax, 0\n{label}:\n",
@@ -498,7 +509,12 @@ public class Generator
         }
         else if(expr is IntLit intlit)
         {
-            result += $"push 0\npush {intlit.Value}\n";
+            if(intlit.Type == VType.Double || intlit.Type == VType.Float)
+            {
+                throw new System.Exception();
+            }
+
+            result += $"push 0\npush {intlit.Value.IntValue}\n";
         }
         else if(expr is BoolLit boolLit)
         {
@@ -547,6 +563,18 @@ public class Generator
                 result += "not rax\n";
                 result += "push rax\n";
             }
+        }
+        else if(expr is MinusOp minus)
+        {
+            result += GenerateExpr(fn, minus.Expr);
+
+            if(minus.Type! == VType.Int) 
+                result += "pop rax\nneg rax\npush rax\n";
+            else if(minus.Type! == VType.I32) 
+                result += "pop rax\nneg eax\npush rax\n";
+            else if(minus.Type! == VType.Byte) 
+                result += "pop rax\nneg al\npush rax\n";
+            else throw new System.Exception("dasniodn");
         }
         else if(expr is ManualOp manop)
         {

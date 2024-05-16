@@ -2,12 +2,20 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 
+namespace Borzoi;
+
 public class Token
 {
     public TokenType Type { get; private set; }
 
     public string Value { get; set; }
-    public int IntValue;
+
+    public List<Borzoi.VType> PossibleTypes = new();
+    public long IntValue; 
+
+    public double DoubleValue; 
+    public float FloatValue; 
+
     public bool BoolValue;
     public string StringValue;
 

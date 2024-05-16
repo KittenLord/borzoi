@@ -75,7 +75,7 @@ public class Analyzer
     }
 
     private static readonly TokenType[] IntIntBoolBinops = [TokenType.Eq, TokenType.Neq, TokenType.Ls, TokenType.Le, TokenType.Gr, TokenType.Gr];
-    private static readonly TokenType[] IntIntIntBinops = [TokenType.Plus, TokenType.Minus, TokenType.Mul, TokenType.Div, TokenType.Mod];
+    private static readonly TokenType[] IntIntIntBinops = [TokenType.Plus, TokenType.Minus, TokenType.Mul, TokenType.Div, TokenType.Mod, TokenType.Modt ];
 
     private VType GetBinopResult(Token binop, VType left, VType right)
     {
@@ -335,7 +335,20 @@ public class Analyzer
             varn.Type = type;
             return type;
         }
-        if(expr is IntLit) return VType.Int;
+        if(expr is IntLit il) 
+        {
+            var types = il.Value.PossibleTypes;
+            if(types.Count <= 0) return VType.Invalid;
+            var type = types.Find(t => t == hint);
+            if(type is not null)
+            {
+                il.Type = hint;
+                return hint;
+            }
+
+            il.Type = types.First();
+            return types.First();
+        }
         if(expr is BoolLit) return VType.Bool;
         if(expr is StrLit) return VType.Byte.Modify(VTypeMod.Arr());
         if(expr is NegateOp negop)
@@ -348,6 +361,18 @@ public class Analyzer
             }
 
             negop.Type = type;
+            return type;
+        }
+        if(expr is MinusOp minus)
+        {
+            var type = FigureOutTheTypeOfAExpr(prefix, minus.Expr, hint);
+            if(type != VType.Int && type != VType.I32 && type != VType.Byte)
+            {
+                Report(Error.TypeMismatchMany([VType.Int, VType.I32, VType.Byte], type, minus.Origin));
+                return VType.Invalid;
+            }
+
+            minus.Type = type;
             return type;
         }
         if(expr is ManualOp manop)
@@ -443,8 +468,8 @@ public class Analyzer
         }
         if(expr is BinopNode binop) 
         {
-            var leftType = FigureOutTheTypeOfAExpr(prefix, binop.Left, VType.Invalid);
-            var rightType = FigureOutTheTypeOfAExpr(prefix, binop.Right, VType.Invalid);
+            var leftType = FigureOutTheTypeOfAExpr(prefix, binop.Left, hint);
+            var rightType = FigureOutTheTypeOfAExpr(prefix, binop.Right, hint);
             var result = GetBinopResult(binop.Operator, leftType, rightType);
             binop.Type = result;
             binop.LeftType = leftType;
@@ -668,9 +693,15 @@ public class Analyzer
 
     public void Analyze()
     {
-        RegisterType(VType.Int, new(Settings.Bytes));
-        RegisterType(VType.Bool, new(1));
+        RegisterType(VType.Int, new(8));
+        RegisterType(VType.I32, new(4));
         RegisterType(VType.Byte, new(1));
+
+        RegisterType(VType.Double, new(8));
+        RegisterType(VType.Float, new(4));
+
+        RegisterType(VType.Bool, new(1));
+
         RegisterType(VType.Void, new(0));
 
         if(!AST.Fndefs.Any(fn => fn.Name == "main"))

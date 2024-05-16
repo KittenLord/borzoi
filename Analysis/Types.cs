@@ -72,9 +72,18 @@ public class TypeInfo
 public class VType
 {
     public static VType Int => new("int");
-    public static VType Bool => new("bool");
+    public static VType I32 => new("i32");
     public static VType Byte => new("byte");
+
+    public static VType Double => new("double");
+    public static VType Float => new("float");
+
+    public static VType Bool => new("bool");
+
     public static VType Void => new("void");
+
+
+
     public static VType VARARGS => new("$$$VARARGS$$$");
 
     public bool Valid;

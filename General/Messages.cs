@@ -1,12 +1,13 @@
 using System.Collections.Generic;
 using System.Linq;
 
+
 public class Message
 {
     public string Msg;
-    public Token Attached;
+    public Borzoi.Token Attached;
 
-    public Message(string msg, Token attached)
+    public Message(string msg, Borzoi.Token attached)
     {
         Msg = msg;
         Attached = attached;
@@ -40,6 +41,16 @@ namespace Borzoi.Lexing.Msg
 {
     public static class Error
     {
+        public static Message NumberLiteralTooLong(Token token) =>
+        new Message(
+            $"\"{token.Value}\" is too long to be any integer type",
+            token);
+
+        public static Message FloatWrongFormat(Token token) =>
+        new Message(
+            $"Floating point number is written in the wrong format",
+            token);
+
         public static Message InvalidEscapeCharacter(char c, Token pos) =>
         new Message(
             $"\"\\{c}\" is not a valid escape sequence",

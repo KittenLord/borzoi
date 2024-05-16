@@ -26,7 +26,7 @@ public class Parser
          TokenType.Id, 
          TokenType.LParen, TokenType.LBrack, 
          TokenType.Mul, TokenType.Pointer,
-         TokenType.Not,
+         TokenType.Not, TokenType.Minus,
          TokenType.Manual];
 
     private Token Pop() => Lexer.Pop();
@@ -264,7 +264,7 @@ public class Parser
             {
                 _ = Pop();
                 if(Peek().Is(TokenType.IntLit)) 
-                    { var size = Pop().IntValue; type.Mods.Add(VTypeMod.Arr(size)); }
+                    { var size = Pop().IntValue; type.Mods.Add(VTypeMod.Arr((int)size)); }
                 else 
                     type.Mods.Add(VTypeMod.Arr());
                 if(Peek().Is(TokenType.RBrack)) { Pop(); continue; }
@@ -538,7 +538,7 @@ public class Parser
     }
 
     private static readonly TokenType[] Binops = 
-        [TokenType.Plus, TokenType.Minus, TokenType.Mul, TokenType.Div, TokenType.Mod, 
+        [TokenType.Plus, TokenType.Minus, TokenType.Mul, TokenType.Div, TokenType.Mod, TokenType.Modt,
          TokenType.Eq, TokenType.Neq, 
          TokenType.Ls, TokenType.Le, TokenType.Gr, TokenType.Ge];
 
@@ -550,7 +550,7 @@ public class Parser
             TokenType.Eq or TokenType.Neq or 
             TokenType.Ls or TokenType.Le or TokenType.Gr or TokenType.Ge => 0,
             TokenType.Plus or TokenType.Minus => 1,
-            TokenType.Mul or TokenType.Div or TokenType.Mod => 2,
+            TokenType.Mul or TokenType.Div or TokenType.Mod or TokenType.Modt => 2,
             _ => throw new System.Exception($"Token {binop} is not a binary operator kys")
         };
     }
@@ -560,7 +560,7 @@ public class Parser
     private IExpr? ParseExprLeaf()
     {
         if(!CanStartLeaf(Peek().Type)) throw new System.Exception("FUUUCK");
-        if(Peek().Is(TokenType.IntLit)) return new IntLit(Pop().IntValue);
+        if(Peek().Is(TokenType.IntLit)) return new IntLit(Pop());
         if(Peek().Is(TokenType.BoolLit)) return new BoolLit(Pop().BoolValue);
         if(Peek().Is(TokenType.StrLit)) return new StrLit(Pop().StringValue);
         if(Peek().Is(TokenType.Pointer))
@@ -605,10 +605,24 @@ public class Parser
                 return null;
             }
 
-            var expr = ParseExpr();
+            var expr = ParseExprLeaf();
             if(expr is null) { return null; }
 
             return new NegateOp(origin, expr);
+        }
+        if(Peek().Is(TokenType.Minus))
+        {
+            var origin = Pop();
+            if(!CanStartLeaf(Peek().Type))
+            {
+                Report(Error.Expected(LeafTokens, Peek()));
+                return null;
+            }
+
+            var expr = ParseExprLeaf();
+            if(expr is null) { return null; }
+
+            return new MinusOp(origin, expr);
         }
         if(Peek().Is(TokenType.Id)) 
         {

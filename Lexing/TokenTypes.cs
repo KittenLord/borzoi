@@ -28,7 +28,7 @@ public enum TokenType
     Link,
 
 
-    Plus, Minus, Mul, Div, Mod,
+    Plus, Minus, Mul, Div, Mod, Modt,
     Eq, Neq, Ge, Le, Gr, Ls,
     Not, 
     Assign,

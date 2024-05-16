@@ -82,10 +82,10 @@ public class PointerAcc : IAccessor
 public class IntLit : IExpr
 {
     public VType Type { get; set; } = VType.Int;
-    public int Value;
-    public IntLit(int value) { Value = value; }
+    public Token Value;
+    public IntLit(Token value) { Value = value; }
 
-    public override string ToString() { return $"{Value} :: Int"; }
+    public override string ToString() { return $"{Value.IntValue} :: Int/Double"; }
 }
 
 public class ConstructorLit : IExpr
@@ -176,6 +176,16 @@ public class NegateOp : IExpr
 
     public NegateOp(Token origin, IExpr expr) { Origin = origin; Expr = expr; }
     public override string ToString() { return $"~\n{Expr.ToString().Indent()}"; }
+}
+
+public class MinusOp : IExpr
+{
+    public VType? Type { get; set; }
+    public Token Origin;
+    public IExpr Expr;
+
+    public MinusOp(Token origin, IExpr expr) { Origin = origin; Expr = expr; }
+    public override string ToString() { return $"-\n{Expr.ToString().Indent()}"; }
 }
 
 public class BinopNode : IExpr
