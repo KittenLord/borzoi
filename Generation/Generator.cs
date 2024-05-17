@@ -662,7 +662,7 @@ public class Generator
 
                         int[] nonPointerSizes = [0, 1, 2, 4, 8];
                         bool returnFitsInRegister = nonPointerSizes.Contains(retTypeInfo.ByteSize);
-                        int retOffset = returnFitsInRegister ? 1 : 0;
+                        int retOffset = !returnFitsInRegister ? 1 : 0;
                         int restoreStack = 32;
 
                         Queue<int> offsets = new();

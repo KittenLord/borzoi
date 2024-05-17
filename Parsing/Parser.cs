@@ -197,6 +197,7 @@ public class Parser
         var type = VType.Void;
         var typeT = (Token?)null;
         if(Peek().Is(TokenType.Id)) { typeT = Peek(); type = ParseType(); }
+        if(type is null) { return null; }
 
         return new CFndefNode(origin, name, cname, args, type, typeT);
     }

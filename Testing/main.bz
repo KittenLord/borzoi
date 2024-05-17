@@ -48,22 +48,21 @@ cfn strlen(byte[]) i32
 
 fn main() {
     call InitWindow(800, 450, "Minesweeper")
-    call InitAudioDevice()
 
     let color bg = color!{ 200, 200, 200, 255 }
 
     let byte[] path = "assets/1.png"
     let texture opened = LoadTexture(path)
 
-    #let texture _1 = LoadTexture("assets/1.png")
-    #let texture _2 = LoadTexture("assets/2.png")
-    #let texture _3 = LoadTexture("assets/3.png")
-    #let texture _4 = LoadTexture("assets/4.png")
-    #let texture _5 = LoadTexture("assets/5.png")
-    #let texture _6 = LoadTexture("assets/6.png")
-    #let texture _7 = LoadTexture("assets/7.png")
-    #let texture _8 = LoadTexture("assets/8.png")
-    #let texture[] numbers = [ opened, _1, _2, _3, _4, _5, _6, _7, _8 ]
+    let texture _1 = LoadTexture("assets/1.png")
+    let texture _2 = LoadTexture("assets/2.png")
+    let texture _3 = LoadTexture("assets/3.png")
+    let texture _4 = LoadTexture("assets/4.png")
+    let texture _5 = LoadTexture("assets/5.png")
+    let texture _6 = LoadTexture("assets/6.png")
+    let texture _7 = LoadTexture("assets/7.png")
+    let texture _8 = LoadTexture("assets/8.png")
+    let texture[] numbers = [ opened, _1, _2, _3, _4, _5, _6, _7, _8 ]
 
     let float size = 30
     let rectangle tileRect = rectangle!{0,0,size,size}
@@ -76,7 +75,7 @@ fn main() {
         call BeginDrawing()
 
             call ClearBackground(bg)
-            call DrawTextureRec(opened, tileRect, vec2!{0,0}, tint)
+            call DrawTextureRec(_1, tileRect, vec2!{0,0}, tint)
 
         call EndDrawing()
     }
