@@ -662,6 +662,7 @@ public class Generator
 
                         int[] nonPointerSizes = [1, 2, 4, 8];
                         bool returnFitsInRegister = nonPointerSizes.Contains(retTypeInfo.ByteSize);
+                        int retOffset = returnFitsInRegister ? 1 : 0;
                         int restoreStack = 32;
 
                         Queue<int> offsets = new();
@@ -669,11 +670,12 @@ public class Generator
                         {
                             var argExpr = func.Args[i];
                             var argInfo = argExpr.Type.GetInfo(AST.TypeInfos);
-                            if(i != func.Args.Count - 1)
-                                offsets.Enqueue(argInfo.ByteSize.Pad(16));
+                            offsets.Enqueue(argInfo.ByteSize.Pad(16));
                             restoreStack += argInfo.ByteSize.Pad(16);
                             result += GenerateExpr(fn, argExpr);
                         }
+                        if(!returnFitsInRegister) result += $"lea r13, [rsp+{offsets.Sum()}]\n";
+                        if(offsets.Count > 0) offsets.Dequeue();
                         
                         var pad = func.Args.Count > 4 && func.Args.Count % 2 != 0;
                         if(pad) 
@@ -686,6 +688,7 @@ public class Generator
                             { restoreStack += func.Args.Count * Settings.Bytes; }
 
                         int extraOffset = 0;
+
                         for(int i = func.Args.Count - 1; i >= 0; i--)
                         {
                             var offset = offsets.Sum() + extraOffset;
@@ -699,10 +702,10 @@ public class Generator
                             var ft = func.Args[i].Type == VType.Double || func.Args[i].Type == VType.Float;
 
                             // FIXME: Figure out what to do with non 8byte values
-                            if(i == 0)      result += $"{op} {(ft ? "xmm0" : "rcx")}, [rsp+{offset}]\n";
-                            else if(i == 1) result += $"{op} {(ft ? "xmm1" : "rdx")}, [rsp+{offset}]\n";
-                            else if(i == 2) result += $"{op} {(ft ? "xmm2" :  "r8")}, [rsp+{offset}]\n";
-                            else if(i == 3) result += $"{op} {(ft ? "xmm3" :  "r9")}, [rsp+{offset}]\n";
+                            if(i == 0 + retOffset)      result += $"{op} {(ft ? "xmm0" : "rcx")}, [rsp+{offset}]\n";
+                            else if(i == 1 + retOffset) result += $"{op} {(ft ? "xmm1" : "rdx")}, [rsp+{offset}]\n";
+                            else if(i == 2 + retOffset) result += $"{op} {(ft ? "xmm2" :  "r8")}, [rsp+{offset}]\n";
+                            else if(i == 3 && returnFitsInRegister) result += $"{op} {(ft ? "xmm3" :  "r9")}, [rsp+{offset}]\n";
 
                             else
                             {

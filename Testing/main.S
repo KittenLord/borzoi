@@ -21,7 +21,7 @@ extern strlen
 section .data
 STR_0@@: db 77,105,110,101,115,119,101,101,112,101,114,0,0,0,0
 STR_0@@LEN: dq 11
-STR_1@@: db "assets/1.png",0,0,0,0
+STR_1@@: db 97,115,115,101,116,115,47,49,46,112,110,103,0,0,0,0
 STR_1@@LEN: dq 12
 error@@OutOfBounds: db "You a big stupid, the array has only %d elements and you're trying to access index %d? Are you crazy?!",0xA,0
 error@@SEGFAULT: db "Oopsie daisy, a segfowolt has occurred",0xA,0
@@ -176,6 +176,7 @@ push 0
 push 450
 push 0
 push 800
+lea r13, [rsp+48]
 mov r8, [rsp+32]
 mov rdx, [rsp+16]
 mov rcx, [rsp+0]
@@ -184,6 +185,7 @@ call InitWindow
 add rsp, 80
 add rsp, 0
 sub rsp, 0
+lea r13, [rsp+0]
 sub rsp, 32
 call InitAudioDevice
 add rsp, 32
@@ -251,8 +253,11 @@ lea rsi, [rbp-24]
 lea rdi, [rsp]
 mov rcx, 16
 rep movsb
-lea rcx, [rel STR_1@@]
-mov rdx, rcx
+lea rsi, [rsp+0]
+push 0
+lea rdi, [rsp]
+mov rcx, 16
+rep movsb
 sub rsp, 32
 call LoadImage
 add rsp, 48
@@ -344,6 +349,7 @@ add rsp, 16
 sub rsp, 0
 push 0
 push 60
+lea r13, [rsp+16]
 mov rcx, [rsp+0]
 sub rsp, 32
 call SetTargetFPS
@@ -368,6 +374,7 @@ cmp rax, 1
 jne _endwhile$$$0
 call gcframe@@
 sub rsp, 0
+lea r13, [rsp+0]
 sub rsp, 32
 call BeginDrawing
 add rsp, 32
@@ -378,12 +385,14 @@ lea rsi, [rbp-4]
 lea rdi, [rsp]
 mov rcx, 4
 rep movsb
+lea r13, [rsp+16]
 mov rcx, [rsp+0]
 sub rsp, 32
 call ClearBackground
 add rsp, 48
 add rsp, 0
 sub rsp, 0
+lea r13, [rsp+0]
 sub rsp, 32
 call EndDrawing
 add rsp, 32
