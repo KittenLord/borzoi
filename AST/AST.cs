@@ -149,9 +149,11 @@ public class BlockNode : IContainer
 public class AST
 {
     public List<Borzoi.Analysis.Identifier> Identifiers;
+
     public List<FndefNode> Fndefs;
     public List<CFndefNode> CFndefs;
     public List<string> Links;
+
     public List<TypedefNode> TypeDefs;
 
     public Dictionary<string, TypeInfo> TypeInfos;

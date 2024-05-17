@@ -286,7 +286,7 @@ public class Parser
     private static List<TokenType> StatementKeyTokens = 
         [ TokenType.Let, TokenType.LetAlloc, TokenType.Call, TokenType.Mut, 
           TokenType.If, TokenType.Ret, TokenType.Do, TokenType.While,
-          TokenType.For ];
+          TokenType.For, TokenType.Continue, TokenType.Break ];
     private static List<TokenType> StatementTokens = LeafTokens.Concat(StatementKeyTokens).ToList();
     private BlockNode? ParseBlock(bool returnExpr, bool forceCurly = false)
     {
@@ -309,7 +309,11 @@ public class Parser
             if(!Peek().Is(StatementTokens.ToArray()))
             { Report(Error.Expected(StatementTokens.ToArray(), Peek())); return null; }
 
-            if(Peek().Is(TokenType.Let, TokenType.LetAlloc))
+            if(Peek().Is(TokenType.Break))
+            { statements.Add(new BreakNode(Pop())); }
+            else if(Peek().Is(TokenType.Continue))
+            { statements.Add(new ContinueNode(Pop())); }
+            else if(Peek().Is(TokenType.Let, TokenType.LetAlloc))
             {
                 var let = ParseLet();
                 if(let is null) { return null; }

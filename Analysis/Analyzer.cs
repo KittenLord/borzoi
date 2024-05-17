@@ -74,7 +74,7 @@ public class Analyzer
         return original is not null;
     }
 
-    private static readonly TokenType[] IntIntBoolBinops = [TokenType.Eq, TokenType.Neq, TokenType.Ls, TokenType.Le, TokenType.Gr, TokenType.Gr];
+    private static readonly TokenType[] IntIntBoolBinops = [TokenType.Eq, TokenType.Neq, TokenType.Ls, TokenType.Le, TokenType.Gr, TokenType.Ge];
     private static readonly TokenType[] IntIntIntBinops = [TokenType.Plus, TokenType.Minus, TokenType.Mul, TokenType.Div, TokenType.Mod, TokenType.Modt ];
 
     private VType GetBinopResult(Token binop, VType left, VType right)
@@ -198,7 +198,7 @@ public class Analyzer
                 Identifiers.Add(id);
             }
 
-            var result = FigureOutTypesAndStuffForABlock(fn.Block, fn, fn.Name + "$");
+            var result = FigureOutTypesAndStuffForABlock(fn.Block, fn, fn.Name + "$", false);
             if(!result) return false;
         }
 
@@ -212,6 +212,7 @@ public class Analyzer
         {
             stack.Push(varn.Name);
             var wname = string.Join("$", stack.Reverse());
+            System.Console.WriteLine($"{varn.Name}");
             var id = Identifiers.Find(i => i.WorkingName == wname);
             if(id is not null) { varn.Type = id.Type; varn.WorkingName = wname; return id; }
             stack.Pop();
@@ -233,6 +234,10 @@ public class Analyzer
             {
                 var id = GetRelevantId(varn, prefix);
                 if(id is not null) type = id.Type;
+                else 
+                {
+                    throw new System.Exception("AWOOGA");
+                }
             }
 
             if(type is null)
@@ -297,7 +302,7 @@ public class Analyzer
                         return VType.Invalid;
                     }
 
-                    var indexType = FigureOutTheTypeOfAExpr(prefix, arrAcc.Index, hint);
+                    var indexType = FigureOutTheTypeOfAExpr(prefix, arrAcc.Index, VType.Int);
                     if(indexType != VType.Int)
                     {
                         Report(Error.TypeMismatch(VType.Int, indexType, arrAcc.Origin));
@@ -468,12 +473,16 @@ public class Analyzer
         }
         if(expr is BinopNode binop) 
         {
+            if(hint == VType.Bool) hint = VType.Invalid;
             var leftType = FigureOutTheTypeOfAExpr(prefix, binop.Left, hint);
+            if(hint == VType.Invalid) hint = leftType.Copy();
             var rightType = FigureOutTheTypeOfAExpr(prefix, binop.Right, hint);
             var result = GetBinopResult(binop.Operator, leftType, rightType);
             binop.Type = result;
             binop.LeftType = leftType;
             binop.RightType = rightType;
+            binop.Left.Type = leftType;
+            binop.Right.Type = rightType;
             return result;
         }
         if(expr is ConstructorLit ctor)
@@ -540,7 +549,7 @@ public class Analyzer
         return VType.Invalid;
     }
 
-    private bool FigureOutTypesAndStuffForABlock(IContainer container, FndefNode fn, string prefix)
+    private bool FigureOutTypesAndStuffForABlock(IContainer container, FndefNode fn, string prefix, bool withinLoop)
     {
         var block = container.GetBlock();
         var prefixes = new Dictionary<string, int>();
@@ -604,6 +613,14 @@ public class Analyzer
                     return false;
                 }
             }
+            else if(line is BreakNode || line is ContinueNode)
+            {
+                if(!withinLoop)
+                {
+                    return false;
+                }
+
+            }
             else if(line is IfNode ifn)
             {
                 var iprefix = GetPrefix("if");
@@ -615,10 +632,10 @@ public class Analyzer
                     return false;
                 }
 
-                var result = FigureOutTypesAndStuffForABlock(ifn.Block, fn, prefix + iprefix + "$");
+                var result = FigureOutTypesAndStuffForABlock(ifn.Block, fn, prefix + iprefix + "$", withinLoop);
                 if(!result) return false;
                 if(ifn.Else is not null)
-                    result = FigureOutTypesAndStuffForABlock(ifn.Else, fn, prefix + iprefix + "$");
+                    result = FigureOutTypesAndStuffForABlock(ifn.Else, fn, prefix + iprefix + "$", withinLoop);
                 if(!result) return false;
             }
             else if(line is WhileNode wh)
@@ -632,7 +649,7 @@ public class Analyzer
                     return false;
                 }
 
-                var result = FigureOutTypesAndStuffForABlock(wh.Block, fn, prefix + iprefix + "$");
+                var result = FigureOutTypesAndStuffForABlock(wh.Block, fn, prefix + iprefix + "$", true);
                 if(!result) return false;
             }
             else if(line is ForNode forn)
@@ -661,7 +678,7 @@ public class Analyzer
                 fn.VarsInternal.Add(new StackVar(VType.Int, wname, -1));
                 Identifiers.Add(id);
 
-                var result = FigureOutTypesAndStuffForABlock(forn.Block, fn, prefix + iprefix + "$");
+                var result = FigureOutTypesAndStuffForABlock(forn.Block, fn, prefix + iprefix + "$", true);
                 if(!result) return false;
             }
             else if(line is ReturnNode ret)

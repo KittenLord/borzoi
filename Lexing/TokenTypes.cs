@@ -23,6 +23,8 @@ public enum TokenType
     For,
     Until,
     Type,
+    Continue,
+    Break,
 
 
     Link,

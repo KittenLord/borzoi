@@ -123,6 +123,11 @@ namespace Borzoi.Analysis.Msg
             $"Expected expression of type {supposed}, found one of type {actual}",
             position);
 
+        public static Message BreakContinueNotWithinLoop(Token origin) =>
+        new Message(
+            $"continue and break statements can only occur within a loop",
+            origin);
+
         public static Message TypeMismatchMany(VType[] supposed, VType actual, Token position) =>
         new Message(
             $"Expected expression of one of the following types: {string.Join(", ", supposed.Select(t => t.ToString()))}, found one of type {actual}",

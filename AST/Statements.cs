@@ -112,6 +112,18 @@ public class LetNode : IStatement
     public override string ToString() { return $"LET{(Alloc ? " ALLOC" : "")} {Name} :: {Type}\n{Expr.ToString()?.Indent()}"; }
 }
 
+public class BreakNode : IStatement {
+    public Token Origin;
+    public BreakNode(Token origin) { Origin = origin; }
+    public override string ToString() { return "BREAK"; }
+}
+
+public class ContinueNode : IStatement {
+    public Token Origin;
+    public ContinueNode(Token origin) { Origin = origin; }
+    public override string ToString() { return "CONTINUE"; }
+}
+
 public class CallNode : IStatement
 {
     public Token Origin;

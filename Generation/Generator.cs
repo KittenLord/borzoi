@@ -286,7 +286,7 @@ public class Generator
             "pop rbp\n" + 
             "ret\n";
 
-            string fnCode = GenerateBlock(fn, fn.Block, 0);
+            string fnCode = GenerateBlock(fn, fn.Block, 0, "", "");
 
             fnBoilerplate = string.Format(fnBoilerplate, fnCode);
 
@@ -298,7 +298,7 @@ public class Generator
         return result;
     }
 
-    private string GenerateBlock(FndefNode fn, BlockNode block, int nest)
+    private string GenerateBlock(FndefNode fn, BlockNode block, int nest, string continueLabel, string breakLabel)
     {
         string fnCode = "";
         if(!block.Manual) fnCode += "call gcframe@@\n";
@@ -380,6 +380,14 @@ public class Generator
                 fnCode += "pop rbp\n";
                 fnCode += "ret\n";
             }
+            else if(line is BreakNode)
+            {
+                fnCode += $"jmp {breakLabel}\n";
+            }
+            else if(line is ContinueNode)
+            {
+                fnCode += $"jmp {continueLabel}\n";
+            }
             else if(line is IfNode ifn)
             {
                 var endifLabel = GetLabel("endif");
@@ -388,30 +396,33 @@ public class Generator
                 fnCode += GenerateExpr(fn, ifn.Condition);
                 fnCode += $"mov rax, [rsp]\nadd rsp, 16\nand rax, 1\ncmp rax, 1\njne {label}\n";
 
-                fnCode += GenerateBlock(fn, ifn.Block, nest);
+                fnCode += GenerateBlock(fn, ifn.Block, nest, continueLabel, breakLabel);
 
                 fnCode += $"jmp {endifLabel}\n";
                 fnCode += $"{label}:\n";
 
                 if(ifn.Else is not null)
                 {
-                    fnCode += GenerateBlock(fn, ifn.Else, nest);
+                    fnCode += GenerateBlock(fn, ifn.Else, nest, continueLabel, breakLabel);
                 }
 
                 fnCode += $"{endifLabel}:\n";
             }
             else if(line is WhileNode wh)
             {
-                var endLabel = GetLabel("endwhile");
-                var doLabel = GetLabel("do");
+                var endLabel = GetLabel("whileend");
+                var doLabel = GetLabel("whiledo");
+                var conditionLabel = GetLabel("whilecondition");
 
-                var condition = GenerateExpr(fn, wh.Condition);
+
+                var condition = $"{conditionLabel}:\n";
+                condition += GenerateExpr(fn, wh.Condition);
                 condition += $"mov rax, [rsp]\n";
                 condition += $"add rsp, 16\n";
                 condition += $"cmp rax, 1\n";
                 condition += $"jne {endLabel}\n";
 
-                var blockCode = GenerateBlock(fn, wh.Block, nest);
+                var blockCode = GenerateBlock(fn, wh.Block, nest, conditionLabel, endLabel);
 
                 fnCode += $"{doLabel}:\n";
                 if(!wh.Do) { fnCode += condition + blockCode; }
@@ -453,7 +464,7 @@ public class Generator
                 fnCode += "cmp rax, rbx\n";
                 fnCode += $"je {endLabel}\n";
 
-                fnCode += GenerateBlock(fn, forn.Block, nest);
+                fnCode += GenerateBlock(fn, forn.Block, nest, stepLabel, endLabel);
                 fnCode += $"jmp {stepLabel}\n";
                 fnCode += $"{endLabel}:\n";
                 fnCode += $"add rsp, 16\n";
@@ -466,7 +477,7 @@ public class Generator
     }
 
     private int lastTempLabel = 0;
-    private string GetLabel(string label = "temp") => $"_{label}$$${lastTempLabel++}";
+    private string GetLabel(string label = "temp") => $"_{label}@@@{lastTempLabel++}";
 
     private string GenerateExpr(FndefNode fn, IExpr expr)
     {
@@ -602,6 +613,9 @@ public class Generator
         }
         else if(expr is Var varl)
         {
+            // System.Console.WriteLine($"FN\n{string.Join("\n", fn.VarsInternal.Select(v => v.WorkingName)).Indent()}");
+            // System.Console.WriteLine($"VAR {varl.WorkingName} {varl.WorkingName is null}");
+            // System.Console.WriteLine($"FN\n{string.Join("\n", AST.Identifiers.Select(v => v.WorkingName)).Indent()}");
             var type = AST.Identifiers.Find(id => id.WorkingName == varl.WorkingName)!.Type.Copy();
             // System.Console.WriteLine($"{type} {varl.WorkingName}");
             // TODO: I'm almost sure that I fucked up accessors' order here
@@ -967,16 +981,18 @@ public class Generator
         var type = sv.Type.Copy();
         foreach(var accessor in expr.Accessors)
         {
-            type.RemoveLastMod();
             var isLast = expr.Accessors.Last() == accessor;
-            var info = type.GetInfo(AST.TypeInfos);
             if(accessor is PointerAcc ptrAcc)
             {
+                type.RemoveLastMod();
+                var info = type.GetInfo(AST.TypeInfos);
                 //if(isLast) { continue; }
                 result += $"mov rax, [rax]\n";
             }
             else if(accessor is ArrayAcc arrAcc)
             {
+                type.RemoveLastMod();
+                var info = type.GetInfo(AST.TypeInfos);
                 // TODO: OOB checking
                 result += "mov rax, [rax]\n";
                 result += "push rax\npush 0\n";
@@ -991,6 +1007,7 @@ public class Generator
             }
             else if(accessor is MemberAcc mAcc)
             {
+                var info = type.GetInfo(AST.TypeInfos);
                 var member = info.Members.Find(m => m.Name == mAcc.Member);
                 result += $"add rax, {member.Offset}\n";
             }

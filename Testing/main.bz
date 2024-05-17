@@ -2,8 +2,6 @@ link "raylib"
 link "gdi32"
 link "winmm"
 
-cfn printf(byte[] fmt, *) i32
-
 type color {
     byte r,
     byte g,
@@ -32,7 +30,7 @@ type vec2 {
 }
 
 type cell {
-    byte number,
+    int number,
     bool closed,
     bool mine,
     bool flag,
@@ -52,14 +50,19 @@ cfn DrawTexturePro(texture t, rectangle sr, rectangle dr, vec2 pos, float rot, c
 cfn GetWorkingDirectory() void@
 cfn InitAudioDevice()
 
-cfn strlen(byte[]) i32
+cfn printf(byte[] fmt, *) i32
+cfn time(int) int
+cfn srand(int)
+cfn rand() int
+cfn tofloat(int) float
 
 fn main() {
-    call InitWindow(800, 450, "Minesweeper")
+    call InitWindow(1600, 900, "Minesweeper")
 
     let color bg = color!{ 200, 200, 200, 255 }
 
     let texture closed = LoadTexture("assets/rescaled/closed.png")
+    let texture mine = LoadTexture("assets/rescaled/mine.png")
 
     let texture opened = LoadTexture("assets/rescaled/opened.png")
     let texture _1 = LoadTexture("assets/rescaled/1.png")
@@ -76,14 +79,44 @@ fn main() {
     let vec2 offset = vec2!{0,0}
     let color tint = color!{255,255,255,255}
 
-    let int gridWidth = 20
-    let int gridHeight = 20
+    call srand(time(0))
+
+    let int gridWidth = 30
+    let int gridHeight = 16
     let cell[][] grid = *gridWidth
-    for i from 0 until grid.len {
+    for i from 0 until grid.len && {
         mut grid[i] = *gridHeight
+        for j from 0 until grid[i].len && {
+            let int r = rand() %% 100
+            let bool isMine = r > 85
+            mut grid[i][j] = cell!{0,true,isMine,false}
+        }
+    }
+
+    for i from 0 until grid.len {
         for j from 0 until grid[i].len {
-            mut grid[i][j] = cell!{0,true,false,false}
-            call printf("%d\n", j)
+            let int around = 0
+
+            for in from 0 until 3 {
+                for jn from 0 until 3 {
+
+                    call printf("ITER %d %d\n", in, jn)
+
+                    if in == 1 { if jn == 1 { continue } }
+                    let int id = i + in - 1
+                    let int jd = j + jn - 1
+
+                    if id < 0 continue
+                    if id >= grid.len continue
+                    if jd < 0 continue
+                    if jd >= grid[i].len continue
+
+                    if grid[id][jd].mine 
+                        mut around = around + 1
+                }
+            }
+
+            mut grid[i][j].number = around
         }
     }
 
@@ -94,16 +127,22 @@ fn main() {
 
             call ClearBackground(bg)
 
-            for i from 0 until grid.len {
-                let float x = tofloat(i)
-                for j from 0 until grid[i].len {
-                    let float y = tofloat(j)
-                    call DrawTextureRec(_1, tileSize, vec2!{x, y}, tint)
+            let cell[] e = grid[0]
+
+            for i from 0 until gridWidth {
+                let int x = i*51
+                for j from 0 until gridHeight {
+                    let int y = j*51
+                    let vec2 pos = vec2!{tofloat(x), tofloat(y)}
+                    let cell c = grid[i][j]
+
+                    if c.mine 
+                        call DrawTextureRec(mine, tileSize, pos, tint)
+                    else
+                        call DrawTextureRec(numbers[c.number], tileSize, pos, tint)
                 }
             }
 
         call EndDrawing()
     }
 }
-
-cfn tofloat(int) float
