@@ -53,9 +53,8 @@ fn main() {
     let color bg = color!{ 200, 200, 200, 255 }
 
     let byte[] path = "assets/1.png"
-    call LoadImage(path)
+    let texture opened = LoadTexture(path)
 
-    #let texture opened = LoadTexture(path)
     #let texture _1 = LoadTexture("assets/1.png")
     #let texture _2 = LoadTexture("assets/2.png")
     #let texture _3 = LoadTexture("assets/3.png")
@@ -70,13 +69,14 @@ fn main() {
     let rectangle tileRect = rectangle!{0,0,size,size}
     let color tint = color!{255,255,255,255}
 
+
     call SetTargetFPS(60)
 
     while !WindowShouldClose() {
         call BeginDrawing()
 
             call ClearBackground(bg)
-            #call DrawTextureRec(opened, tileRect, vec2!{0,0}, tint)
+            call DrawTextureRec(opened, tileRect, vec2!{0,0}, tint)
 
         call EndDrawing()
     }

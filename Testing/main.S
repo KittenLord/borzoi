@@ -152,7 +152,7 @@ ret
 main@@:
 push rbp
 mov rbp, rsp
-sub rsp, 48
+sub rsp, 80
 call gcframe@@
 sub rsp, 0
 mov rdi, [rel STR_0@@LEN]
@@ -176,18 +176,14 @@ push 0
 push 450
 push 0
 push 800
-lea r13, [rsp+48]
-mov r8, [rsp+32]
-mov rdx, [rsp+16]
-mov rcx, [rsp+0]
-mov rcx, r13
+mov r9, [rsp+32]
+mov r8, [rsp+16]
+mov rdx, [rsp+0]
 sub rsp, 32
 call InitWindow
 add rsp, 80
 add rsp, 0
 sub rsp, 0
-lea r13, [rsp+0]
-mov rcx, r13
 sub rsp, 32
 call InitAudioDevice
 add rsp, 32
@@ -249,22 +245,27 @@ lea rdi, [rbp-24]
 mov rcx, 16
 rep movsb
 add rsp, 16
-sub rsp, 16
+sub rsp, 32
 sub rsp, 16
 lea rsi, [rbp-24]
 lea rdi, [rsp]
 mov rcx, 16
 rep movsb
-mov rdx, [rsp+0]
+lea r14, [rsp+16]
+mov rcx, [rsp+0]
+mov rcx, r14
 sub rsp, 32
-call LoadImage
+call LoadTexture
 add rsp, 48
-mov [rsp], rax
-add rsp, 16
+lea rsi, [rsp]
+lea rdi, [rbp-44]
+mov rcx, 20
+rep movsb
+add rsp, 32
 push 0
 push __float32__(30.0)
 lea rsi, [rsp]
-lea rdi, [rbp-28]
+lea rdi, [rbp-48]
 mov rcx, 4
 rep movsb
 add rsp, 16
@@ -273,12 +274,12 @@ push __float32__(0.0)
 push 0
 push __float32__(0.0)
 sub rsp, 16
-lea rsi, [rbp-28]
+lea rsi, [rbp-48]
 lea rdi, [rsp]
 mov rcx, 4
 rep movsb
 sub rsp, 16
-lea rsi, [rbp-28]
+lea rsi, [rbp-48]
 lea rdi, [rsp]
 mov rcx, 4
 rep movsb
@@ -305,7 +306,7 @@ mov rcx, 16
 rep movsb
 add rsp, 64
 lea rsi, [rsp]
-lea rdi, [rbp-44]
+lea rdi, [rbp-64]
 mov rcx, 16
 rep movsb
 add rsp, 16
@@ -340,16 +341,14 @@ mov rcx, 4
 rep movsb
 add rsp, 64
 lea rsi, [rsp]
-lea rdi, [rbp-48]
+lea rdi, [rbp-68]
 mov rcx, 4
 rep movsb
 add rsp, 16
 sub rsp, 0
 push 0
 push 60
-lea r13, [rsp+16]
-mov rcx, [rsp+0]
-mov rcx, r13
+mov rdx, [rsp+0]
 sub rsp, 32
 call SetTargetFPS
 add rsp, 48
@@ -373,8 +372,6 @@ cmp rax, 1
 jne _endwhile$$$0
 call gcframe@@
 sub rsp, 0
-lea r13, [rsp+0]
-mov rcx, r13
 sub rsp, 32
 call BeginDrawing
 add rsp, 32
@@ -385,16 +382,58 @@ lea rsi, [rbp-4]
 lea rdi, [rsp]
 mov rcx, 4
 rep movsb
-lea r13, [rsp+16]
-mov rcx, [rsp+0]
-mov rcx, r13
+mov rdx, [rsp+0]
 sub rsp, 32
 call ClearBackground
 add rsp, 48
 add rsp, 0
 sub rsp, 0
-lea r13, [rsp+0]
-mov rcx, r13
+sub rsp, 16
+lea rsi, [rbp-68]
+lea rdi, [rsp]
+mov rcx, 4
+rep movsb
+push 0
+push __float32__(0.0)
+push 0
+push __float32__(0.0)
+sub rsp, 16
+lea rdi, [rsp+0]
+lea rsi, [rsp+32]
+mov rcx, 4
+rep movsb
+lea rdi, [rsp+4]
+lea rsi, [rsp+16]
+mov rcx, 4
+rep movsb
+lea rsi, [rsp]
+lea rdi, [rsp+32]
+mov rcx, 8
+rep movsb
+add rsp, 32
+sub rsp, 16
+lea rsi, [rbp-64]
+lea rdi, [rsp]
+mov rcx, 16
+rep movsb
+sub rsp, 32
+lea rsi, [rbp-44]
+lea rdi, [rsp]
+mov rcx, 20
+rep movsb
+lea rsi, [rsp+64]
+push 0
+lea rdi, [rsp]
+mov rcx, 4
+rep movsb
+mov r9, [rsp+56]
+lea r8, [rsp+40]
+lea rdx, [rsp+8]
+sub rsp, 32
+call DrawTextureRec
+add rsp, 112
+add rsp, 0
+sub rsp, 0
 sub rsp, 32
 call EndDrawing
 add rsp, 32

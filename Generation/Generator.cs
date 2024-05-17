@@ -660,7 +660,7 @@ public class Generator
                         // 2. Calculate stack frame size
                         // 3. Assign arguments from right to left
 
-                        int[] nonPointerSizes = [1, 2, 4, 8];
+                        int[] nonPointerSizes = [0, 1, 2, 4, 8];
                         bool returnFitsInRegister = nonPointerSizes.Contains(retTypeInfo.ByteSize);
                         int retOffset = returnFitsInRegister ? 1 : 0;
                         int restoreStack = 32;
@@ -674,7 +674,7 @@ public class Generator
                             restoreStack += argInfo.ByteSize.Pad(16);
                             result += GenerateExpr(fn, argExpr);
                         }
-                        if(!returnFitsInRegister) result += $"lea r13, [rsp+{offsets.Sum()}]\n";
+                        if(!returnFitsInRegister) result += $"lea r14, [rsp+{offsets.Sum()}]\n";
                         if(offsets.Count > 0) offsets.Dequeue();
                         
                         var pad = func.Args.Count > 4 && func.Args.Count % 2 != 0;
@@ -719,13 +719,13 @@ public class Generator
 
                             if(offsets.Count > 0) offsets.Dequeue();
                         }
-                        if(!returnFitsInRegister) result += "mov rcx, r13\n";
+                        if(!returnFitsInRegister) result += "mov rcx, r14\n";
 
                         result += "sub rsp, 32\n";
                         result += $"call {cfn.CName}\n";
                         result += $"add rsp, {restoreStack}\n";
 
-                        if(returnFitsInRegister) 
+                        if(returnFitsInRegister && retTypeInfo.ByteSize > 0) 
                             result += $"mov [rsp], rax\n";
                     }
                     else
