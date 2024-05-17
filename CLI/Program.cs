@@ -82,7 +82,8 @@ public class Program
         ArgValue<string> OutputNasmPath,
         ArgValue<bool?> PlatformWindows,
         ArgValue<bool> Rawdog,
-        ArgValue<bool> DisplayParser)
+        ArgValue<bool> DisplayParser,
+        ArgValue<bool> DisplayLexer)
     BuildArguments(ArgumentParser parser)
     {
         return (
@@ -94,7 +95,8 @@ public class Program
             parser.SingleArgument<bool?>(["--platform", "-p"], new(), str => str[0] switch 
                 { "win" or "win64" => true, "linux" or "lin" or "linux64" or "lin64" => false, _ => null }),
             parser.FlagArgument(["--rawdog"], new()),
-            parser.FlagArgument(["--display-parser", "-parser"], new())
+            parser.FlagArgument(["--display-parser", "-parser"], new()),
+            parser.FlagArgument(["--display-lexer", "-lexer"], new())
         );
     }
     
@@ -152,7 +154,7 @@ public class Program
             files.Add(file);
         }
 
-        var compilerResult = GenerateNasm(files, platformWindows, build.DisplayParser.Get(false));
+        var compilerResult = GenerateNasm(files, platformWindows, build.DisplayParser.Get(false), build.DisplayLexer.Get(false));
 
 if(build.Rawdog.Get(false)) goto rawdog;
         if(compilerResult.result.Error) return compilerResult.result;
@@ -185,12 +187,18 @@ rawdog:
     }
 
     private class CompileData { public string Nasm = ""; public List<string> Links = new(); }
-    private static (Result result, CompileData? data) GenerateNasm(List<string> files, bool platformWindows, bool displayParser)
+    private static (Result result, CompileData? data) GenerateNasm(List<string> files, bool platformWindows, bool displayParser, bool displayLexer)
     {
         var parser = new Parser(null);
 
         foreach(var file in files)
         {
+            if(displayLexer)
+            {
+                var l = new Lexer(file);
+                do Console.WriteLine(l.Pop()); while(!l.Peek().Is(TokenType.EOF));
+            }
+
             var lexer = new Lexer(file);
             parser.Parse(lexer);
 

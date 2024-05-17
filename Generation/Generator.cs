@@ -103,6 +103,13 @@ public class Generator
         "int 80h\n" + 
 
 
+        // HACK: Just for demo
+        "tofloat:\n" +
+        "push rbp\n" +
+        "cvtsi2ss xmm0, rcx\n" +
+        "movq rax, xmm0\n" +
+        "pop rbp\n" +
+        "ret\n" +
 
 
 
@@ -338,13 +345,13 @@ public class Generator
             }
             else if(line is MutNode mut)
             {
-                System.Console.WriteLine($"{mut.Expr.Type}");
+                // System.Console.WriteLine($"{mut.Expr.Type}");
                 var size = mut.Expr.Type.GetInfo(AST.TypeInfos).ByteSize;
 
                 fnCode += GenerateExpr(fn, mut.Expr);
                 fnCode += GenerateExprAddress(fn, mut.Var);
 
-                System.Console.WriteLine($"{mut.Origin} {size} {mut.Expr.Type}");
+                // System.Console.WriteLine($"{mut.Origin} {size} {mut.Expr.Type}");
                 fnCode += $"lea rsi, [rsp]\n";
                 fnCode += $"mov rdi, rax\n";
                 fnCode += $"mov rcx, {size}\n";
@@ -449,6 +456,7 @@ public class Generator
                 fnCode += GenerateBlock(fn, forn.Block, nest);
                 fnCode += $"jmp {stepLabel}\n";
                 fnCode += $"{endLabel}:\n";
+                fnCode += $"add rsp, 16\n";
             }
             else throw new System.Exception();
         }
@@ -595,7 +603,7 @@ public class Generator
         else if(expr is Var varl)
         {
             var type = AST.Identifiers.Find(id => id.WorkingName == varl.WorkingName)!.Type.Copy();
-            System.Console.WriteLine($"{type} {varl.WorkingName}");
+            // System.Console.WriteLine($"{type} {varl.WorkingName}");
             // TODO: I'm almost sure that I fucked up accessors' order here
             if(varl.Accessors.Count == 0 || varl.Accessors.First() is not FuncAcc)
             {
@@ -694,7 +702,7 @@ public class Generator
                             var offset = offsets.Sum() + extraOffset;
                             var argInfo = func.Args[i].Type.GetInfo(AST.TypeInfos);
 
-                            System.Console.WriteLine($"FN CALL {cfn.Name} {func.Args[i].Type} {argInfo}");
+                            // System.Console.WriteLine($"FN CALL {cfn.Name} {func.Args[i].Type} {argInfo}");
 
                             var byPointer = !nonPointerSizes.Contains(argInfo.ByteSize);
                             if(func.Args[i].Type.Is<VArray>()) byPointer = false;
@@ -776,21 +784,21 @@ public class Generator
                     var ib = GetLabel("InBounds");
 
                     result += GenerateExpr(fn, arr.Index);
-                    result += "pop rbx\n"; // Index
+                    result += "pop rax\n"; // Index
 
                     result += "add rsp, 8\n";
-                    result += $"pop rax\n"; // Address
+                    result += $"pop rbx\n"; // Address
                     // result += "add rsp, 8\n";
                     result += "pop rcx\n"; // Length
                     // result += "mov rcx, [rsp]\n"; // Length
-                    result += "cmp rbx, rcx\n";
+                    result += "cmp rax, rcx\n";
                     result += $"jge {oob}\n";
-                    result += "cmp rbx, 0\n";
+                    result += "cmp rax, 0\n";
                     result += $"jge {ib}\n";
                     result += $"{oob}:\n";
 
                     result += "mov r8, rcx\n";
-                    result += "mov rdx, rbx\n";
+                    result += "mov rdx, rax\n";
 
                     // Pass the string by its adress kids
                     result += "mov rcx, error@@OutOfBounds\n";
@@ -798,9 +806,11 @@ public class Generator
                     result += $"call error@@\n";
                     result += $"{ib}:\n";
 
-                    System.Console.WriteLine($"{type} {info.ByteSize}");
+                    // System.Console.WriteLine($"{type} {info.ByteSize}");
 
-                    result += $"lea rsi, [rax+rbx*{info.ByteSize}]\n";
+                    result += $"mov rcx, {info.ByteSize}\n";
+                    result += $"mul rcx\n";
+                    result += $"lea rsi, [rax+rbx]\n";
                     result += $"sub rsp, {info.ByteSize.Pad(16)}\n";
                     result += $"lea rdi, [rsp]\n";
                     result += $"mov rcx, {info.ByteSize}\n";
@@ -808,8 +818,8 @@ public class Generator
                 }
                 else if(accessor is MemberAcc mAcc)
                 {
-                    System.Console.WriteLine($"{type}");
-                    System.Console.WriteLine($"{tinfo}");
+                    // System.Console.WriteLine($"{type}");
+                    // System.Console.WriteLine($"{tinfo}");
 
                     var member = tinfo.Members.Find(m => m.Name == mAcc.Member);
                     type = member.Type;
@@ -882,9 +892,9 @@ public class Generator
             var info = type.GetInfo(AST.TypeInfos);
             var size = info.ByteSize.Pad(16);
 
-            System.Console.WriteLine($"{type}");
-            System.Console.WriteLine($"{info}");
-            System.Console.WriteLine($"{size}");
+            // System.Console.WriteLine($"{type}");
+            // System.Console.WriteLine($"{info}");
+            // System.Console.WriteLine($"{size}");
 
             var stackFrame = info.Members.Sum(m => m.Type.GetInfo(AST.TypeInfos).ByteSize.Pad(16));
             Queue<int> offsets = new();
@@ -971,11 +981,13 @@ public class Generator
                 result += "mov rax, [rax]\n";
                 result += "push rax\npush 0\n";
                 result += GenerateExpr(fn, arrAcc.Index);
-                result += "pop rbx\n";
-                result += $"add rsp, 16\n";
                 result += "pop rax\n";
+                result += $"mov rcx, {info.ByteSize}\n";
+                result += $"mul rcx\n";
+                result += $"add rsp, 16\n";
+                result += "pop rbx\n";
 
-                result += $"lea rax, [rax+rbx*{info.ByteSize}]\n";
+                result += $"lea rax, [rax+rbx]\n";
             }
             else if(accessor is MemberAcc mAcc)
             {

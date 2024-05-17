@@ -59,6 +59,8 @@ fn main() {
 
     let color bg = color!{ 200, 200, 200, 255 }
 
+    let texture closed = LoadTexture("assets/rescaled/closed.png")
+
     let texture opened = LoadTexture("assets/rescaled/opened.png")
     let texture _1 = LoadTexture("assets/rescaled/1.png")
     let texture _2 = LoadTexture("assets/rescaled/2.png")
@@ -80,7 +82,8 @@ fn main() {
     for i from 0 until grid.len {
         mut grid[i] = *gridHeight
         for j from 0 until grid[i].len {
-            mut grid[i][j] = cell!{-1,true,false,false}
+            mut grid[i][j] = cell!{0,true,false,false}
+            call printf("%d\n", j)
         }
     }
 
@@ -92,11 +95,15 @@ fn main() {
             call ClearBackground(bg)
 
             for i from 0 until grid.len {
+                let float x = tofloat(i)
                 for j from 0 until grid[i].len {
-
+                    let float y = tofloat(j)
+                    call DrawTextureRec(_1, tileSize, vec2!{x, y}, tint)
                 }
             }
 
         call EndDrawing()
     }
 }
+
+cfn tofloat(int) float

@@ -679,7 +679,7 @@ public class Analyzer
                     if(!exprType.Valid) return false;
                     if(exprType != fn.RetType)
                     {
-                        System.Console.WriteLine($"MISMATCH");
+                        // System.Console.WriteLine($"MISMATCH");
                         Report(Error.RetTypeMismatch(fn.Name, fn.RetType, exprType, ret.Origin));
                         return false;
                     }
@@ -756,9 +756,9 @@ public class Analyzer
         foreach(var type in Types)
         {
             var info = type.GetInfo(TypeInfos);
-            System.Console.WriteLine($"{type}");
-            System.Console.WriteLine($"{info}");
-            System.Console.WriteLine($"");
+            // System.Console.WriteLine($"{type}");
+            // System.Console.WriteLine($"{info}");
+            // System.Console.WriteLine($"");
         }
 
         var result = FigureOutTypesAndStuff();
