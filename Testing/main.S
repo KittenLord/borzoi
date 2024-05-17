@@ -180,12 +180,14 @@ lea r13, [rsp+48]
 mov r8, [rsp+32]
 mov rdx, [rsp+16]
 mov rcx, [rsp+0]
+mov rcx, r13
 sub rsp, 32
 call InitWindow
 add rsp, 80
 add rsp, 0
 sub rsp, 0
 lea r13, [rsp+0]
+mov rcx, r13
 sub rsp, 32
 call InitAudioDevice
 add rsp, 32
@@ -253,11 +255,7 @@ lea rsi, [rbp-24]
 lea rdi, [rsp]
 mov rcx, 16
 rep movsb
-lea rsi, [rsp+0]
-push 0
-lea rdi, [rsp]
-mov rcx, 16
-rep movsb
+mov rdx, [rsp+0]
 sub rsp, 32
 call LoadImage
 add rsp, 48
@@ -351,6 +349,7 @@ push 0
 push 60
 lea r13, [rsp+16]
 mov rcx, [rsp+0]
+mov rcx, r13
 sub rsp, 32
 call SetTargetFPS
 add rsp, 48
@@ -375,6 +374,7 @@ jne _endwhile$$$0
 call gcframe@@
 sub rsp, 0
 lea r13, [rsp+0]
+mov rcx, r13
 sub rsp, 32
 call BeginDrawing
 add rsp, 32
@@ -387,12 +387,14 @@ mov rcx, 4
 rep movsb
 lea r13, [rsp+16]
 mov rcx, [rsp+0]
+mov rcx, r13
 sub rsp, 32
 call ClearBackground
 add rsp, 48
 add rsp, 0
 sub rsp, 0
 lea r13, [rsp+0]
+mov rcx, r13
 sub rsp, 32
 call EndDrawing
 add rsp, 32

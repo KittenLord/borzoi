@@ -702,10 +702,10 @@ public class Generator
                             var ft = func.Args[i].Type == VType.Double || func.Args[i].Type == VType.Float;
 
                             // FIXME: Figure out what to do with non 8byte values
-                            if(i == 0 + retOffset)      result += $"{op} {(ft ? "xmm0" : "rcx")}, [rsp+{offset}]\n";
-                            else if(i == 1 + retOffset) result += $"{op} {(ft ? "xmm1" : "rdx")}, [rsp+{offset}]\n";
-                            else if(i == 2 + retOffset) result += $"{op} {(ft ? "xmm2" :  "r8")}, [rsp+{offset}]\n";
-                            else if(i == 3 && returnFitsInRegister) result += $"{op} {(ft ? "xmm3" :  "r9")}, [rsp+{offset}]\n";
+                            if(i + retOffset == 0)      result += $"{op} {(ft ? "xmm0" : "rcx")}, [rsp+{offset}]\n";
+                            else if(i + retOffset == 1) result += $"{op} {(ft ? "xmm1" : "rdx")}, [rsp+{offset}]\n";
+                            else if(i + retOffset == 2) result += $"{op} {(ft ? "xmm2" :  "r8")}, [rsp+{offset}]\n";
+                            else if(i + retOffset == 3) result += $"{op} {(ft ? "xmm3" :  "r9")}, [rsp+{offset}]\n";
 
                             else
                             {
@@ -719,6 +719,7 @@ public class Generator
 
                             if(offsets.Count > 0) offsets.Dequeue();
                         }
+                        if(!returnFitsInRegister) result += "mov rcx, r13\n";
 
                         result += "sub rsp, 32\n";
                         result += $"call {cfn.CName}\n";
