@@ -15,28 +15,31 @@ extern SetTargetFPS
 extern LoadTexture
 extern LoadImage
 extern DrawTextureRec
+extern DrawTexturePro
 extern GetWorkingDirectory
 extern InitAudioDevice
 extern strlen
 section .data
 STR_0@@: db 77,105,110,101,115,119,101,101,112,101,114,0,0,0,0
 STR_0@@LEN: dq 11
-STR_1@@: db 97,115,115,101,116,115,47,49,46,112,110,103,0,0,0,0
-STR_1@@LEN: dq 12
-STR_2@@: db 97,115,115,101,116,115,47,50,46,112,110,103,0,0,0,0
-STR_2@@LEN: dq 12
-STR_3@@: db 97,115,115,101,116,115,47,51,46,112,110,103,0,0,0,0
-STR_3@@LEN: dq 12
-STR_4@@: db 97,115,115,101,116,115,47,52,46,112,110,103,0,0,0,0
-STR_4@@LEN: dq 12
-STR_5@@: db 97,115,115,101,116,115,47,53,46,112,110,103,0,0,0,0
-STR_5@@LEN: dq 12
-STR_6@@: db 97,115,115,101,116,115,47,54,46,112,110,103,0,0,0,0
-STR_6@@LEN: dq 12
-STR_7@@: db 97,115,115,101,116,115,47,55,46,112,110,103,0,0,0,0
-STR_7@@LEN: dq 12
-STR_8@@: db 97,115,115,101,116,115,47,56,46,112,110,103,0,0,0,0
-STR_8@@LEN: dq 12
+STR_1@@: db 97,115,115,101,116,115,47,114,101,115,99,97,108,101,100,47,111,112,101,110,101,100,46,112,110,103,0,0,0,0
+STR_1@@LEN: dq 26
+STR_2@@: db 97,115,115,101,116,115,47,114,101,115,99,97,108,101,100,47,49,46,112,110,103,0,0,0,0
+STR_2@@LEN: dq 21
+STR_3@@: db 97,115,115,101,116,115,47,114,101,115,99,97,108,101,100,47,50,46,112,110,103,0,0,0,0
+STR_3@@LEN: dq 21
+STR_4@@: db 97,115,115,101,116,115,47,114,101,115,99,97,108,101,100,47,51,46,112,110,103,0,0,0,0
+STR_4@@LEN: dq 21
+STR_5@@: db 97,115,115,101,116,115,47,114,101,115,99,97,108,101,100,47,52,46,112,110,103,0,0,0,0
+STR_5@@LEN: dq 21
+STR_6@@: db 97,115,115,101,116,115,47,114,101,115,99,97,108,101,100,47,53,46,112,110,103,0,0,0,0
+STR_6@@LEN: dq 21
+STR_7@@: db 97,115,115,101,116,115,47,114,101,115,99,97,108,101,100,47,54,46,112,110,103,0,0,0,0
+STR_7@@LEN: dq 21
+STR_8@@: db 97,115,115,101,116,115,47,114,101,115,99,97,108,101,100,47,55,46,112,110,103,0,0,0,0
+STR_8@@LEN: dq 21
+STR_9@@: db 97,115,115,101,116,115,47,114,101,115,99,97,108,101,100,47,56,46,112,110,103,0,0,0,0
+STR_9@@LEN: dq 21
 error@@OutOfBounds: db "You a big stupid, the array has only %d elements and you're trying to access index %d? Are you crazy?!",0xA,0
 error@@SEGFAULT: db "Oopsie daisy, a segfowolt has occurred",0xA,0
 gclen@@: dq -1
@@ -232,6 +235,7 @@ lea rdi, [rbp-4]
 mov rcx, 4
 rep movsb
 add rsp, 16
+sub rsp, 32
 mov rdi, [rel STR_1@@LEN]
 mov rsi, 1
 mov rdx, 1
@@ -249,54 +253,14 @@ mov rdi, r12
 mov rsi, STR_1@@
 mov rcx, [rel STR_1@@LEN]
 rep movsb
+lea r14, [rsp+16]
+mov rdx, [rsp+0]
+mov rcx, r14
+sub rsp, 32
+call LoadTexture
+add rsp, 48
 lea rsi, [rsp]
 lea rdi, [rbp-24]
-mov rcx, 16
-rep movsb
-add rsp, 16
-sub rsp, 32
-sub rsp, 16
-lea rsi, [rbp-24]
-lea rdi, [rsp]
-mov rcx, 16
-rep movsb
-lea r14, [rsp+16]
-mov rdx, [rsp+0]
-mov rcx, r14
-sub rsp, 32
-call LoadTexture
-add rsp, 48
-lea rsi, [rsp]
-lea rdi, [rbp-44]
-mov rcx, 20
-rep movsb
-add rsp, 32
-sub rsp, 32
-mov rdi, [rel STR_1@@LEN]
-mov rsi, 1
-mov rdx, 1
-push rdi
-push 0
-add rdi, 8
-mov rcx, rdi
-sub rsp, 32
-call calloc
-add rsp, 32
-mov [rsp], rax
-mov r12, rax
-call gcpush@@
-mov rdi, r12
-mov rsi, STR_1@@
-mov rcx, [rel STR_1@@LEN]
-rep movsb
-lea r14, [rsp+16]
-mov rdx, [rsp+0]
-mov rcx, r14
-sub rsp, 32
-call LoadTexture
-add rsp, 48
-lea rsi, [rsp]
-lea rdi, [rbp-64]
 mov rcx, 20
 rep movsb
 add rsp, 32
@@ -325,7 +289,7 @@ sub rsp, 32
 call LoadTexture
 add rsp, 48
 lea rsi, [rsp]
-lea rdi, [rbp-84]
+lea rdi, [rbp-44]
 mov rcx, 20
 rep movsb
 add rsp, 32
@@ -354,7 +318,7 @@ sub rsp, 32
 call LoadTexture
 add rsp, 48
 lea rsi, [rsp]
-lea rdi, [rbp-104]
+lea rdi, [rbp-64]
 mov rcx, 20
 rep movsb
 add rsp, 32
@@ -383,7 +347,7 @@ sub rsp, 32
 call LoadTexture
 add rsp, 48
 lea rsi, [rsp]
-lea rdi, [rbp-124]
+lea rdi, [rbp-84]
 mov rcx, 20
 rep movsb
 add rsp, 32
@@ -412,7 +376,7 @@ sub rsp, 32
 call LoadTexture
 add rsp, 48
 lea rsi, [rsp]
-lea rdi, [rbp-144]
+lea rdi, [rbp-104]
 mov rcx, 20
 rep movsb
 add rsp, 32
@@ -441,7 +405,7 @@ sub rsp, 32
 call LoadTexture
 add rsp, 48
 lea rsi, [rsp]
-lea rdi, [rbp-164]
+lea rdi, [rbp-124]
 mov rcx, 20
 rep movsb
 add rsp, 32
@@ -470,7 +434,7 @@ sub rsp, 32
 call LoadTexture
 add rsp, 48
 lea rsi, [rsp]
-lea rdi, [rbp-184]
+lea rdi, [rbp-144]
 mov rcx, 20
 rep movsb
 add rsp, 32
@@ -499,7 +463,36 @@ sub rsp, 32
 call LoadTexture
 add rsp, 48
 lea rsi, [rsp]
-lea rdi, [rbp-204]
+lea rdi, [rbp-164]
+mov rcx, 20
+rep movsb
+add rsp, 32
+sub rsp, 32
+mov rdi, [rel STR_9@@LEN]
+mov rsi, 1
+mov rdx, 1
+push rdi
+push 0
+add rdi, 8
+mov rcx, rdi
+sub rsp, 32
+call calloc
+add rsp, 32
+mov [rsp], rax
+mov r12, rax
+call gcpush@@
+mov rdi, r12
+mov rsi, STR_9@@
+mov rcx, [rel STR_9@@LEN]
+rep movsb
+lea r14, [rsp+16]
+mov rdx, [rsp+0]
+mov rcx, r14
+sub rsp, 32
+call LoadTexture
+add rsp, 48
+lea rsi, [rsp]
+lea rdi, [rbp-184]
 mov rcx, 20
 rep movsb
 add rsp, 32
@@ -515,7 +508,7 @@ mov r12, rax
 call gcpush@@
 mov r12, [rsp]
 sub rsp, 32
-lea rsi, [rbp-44]
+lea rsi, [rbp-24]
 lea rdi, [rsp]
 mov rcx, 20
 rep movsb
@@ -526,7 +519,7 @@ rep movsb
 add rsp, 32
 mov r12, [rsp]
 sub rsp, 32
-lea rsi, [rbp-64]
+lea rsi, [rbp-44]
 lea rdi, [rsp]
 mov rcx, 20
 rep movsb
@@ -537,7 +530,7 @@ rep movsb
 add rsp, 32
 mov r12, [rsp]
 sub rsp, 32
-lea rsi, [rbp-84]
+lea rsi, [rbp-64]
 lea rdi, [rsp]
 mov rcx, 20
 rep movsb
@@ -548,7 +541,7 @@ rep movsb
 add rsp, 32
 mov r12, [rsp]
 sub rsp, 32
-lea rsi, [rbp-104]
+lea rsi, [rbp-84]
 lea rdi, [rsp]
 mov rcx, 20
 rep movsb
@@ -559,7 +552,7 @@ rep movsb
 add rsp, 32
 mov r12, [rsp]
 sub rsp, 32
-lea rsi, [rbp-124]
+lea rsi, [rbp-104]
 lea rdi, [rsp]
 mov rcx, 20
 rep movsb
@@ -570,7 +563,7 @@ rep movsb
 add rsp, 32
 mov r12, [rsp]
 sub rsp, 32
-lea rsi, [rbp-144]
+lea rsi, [rbp-124]
 lea rdi, [rsp]
 mov rcx, 20
 rep movsb
@@ -581,7 +574,7 @@ rep movsb
 add rsp, 32
 mov r12, [rsp]
 sub rsp, 32
-lea rsi, [rbp-164]
+lea rsi, [rbp-144]
 lea rdi, [rsp]
 mov rcx, 20
 rep movsb
@@ -592,7 +585,7 @@ rep movsb
 add rsp, 32
 mov r12, [rsp]
 sub rsp, 32
-lea rsi, [rbp-184]
+lea rsi, [rbp-164]
 lea rdi, [rsp]
 mov rcx, 20
 rep movsb
@@ -603,7 +596,7 @@ rep movsb
 add rsp, 32
 mov r12, [rsp]
 sub rsp, 32
-lea rsi, [rbp-204]
+lea rsi, [rbp-184]
 lea rdi, [rsp]
 mov rcx, 20
 rep movsb
@@ -613,14 +606,14 @@ mov rcx, 20
 rep movsb
 add rsp, 32
 lea rsi, [rsp]
-lea rdi, [rbp-224]
+lea rdi, [rbp-200]
 mov rcx, 16
 rep movsb
 add rsp, 16
 push 0
-push __float32__(30.0)
+push __float32__(200.0)
 lea rsi, [rsp]
-lea rdi, [rbp-228]
+lea rdi, [rbp-204]
 mov rcx, 4
 rep movsb
 add rsp, 16
@@ -628,13 +621,48 @@ push 0
 push __float32__(0.0)
 push 0
 push __float32__(0.0)
+push 0
+push __float32__(51.0)
+push 0
+push __float32__(51.0)
 sub rsp, 16
-lea rsi, [rbp-228]
+lea rdi, [rsp+0]
+lea rsi, [rsp+64]
+mov rcx, 4
+rep movsb
+lea rdi, [rsp+4]
+lea rsi, [rsp+48]
+mov rcx, 4
+rep movsb
+lea rdi, [rsp+8]
+lea rsi, [rsp+32]
+mov rcx, 4
+rep movsb
+lea rdi, [rsp+12]
+lea rsi, [rsp+16]
+mov rcx, 4
+rep movsb
+lea rsi, [rsp]
+lea rdi, [rsp+64]
+mov rcx, 16
+rep movsb
+add rsp, 64
+lea rsi, [rsp]
+lea rdi, [rbp-220]
+mov rcx, 16
+rep movsb
+add rsp, 16
+push 0
+push __float32__(0.0)
+push 0
+push __float32__(0.0)
+sub rsp, 16
+lea rsi, [rbp-204]
 lea rdi, [rsp]
 mov rcx, 4
 rep movsb
 sub rsp, 16
-lea rsi, [rbp-228]
+lea rsi, [rbp-204]
 lea rdi, [rsp]
 mov rcx, 4
 rep movsb
@@ -661,8 +689,38 @@ mov rcx, 16
 rep movsb
 add rsp, 64
 lea rsi, [rsp]
-lea rdi, [rbp-244]
+lea rdi, [rbp-236]
 mov rcx, 16
+rep movsb
+add rsp, 16
+push 0
+push __float32__(0.0)
+push 0
+push __float32__(0.0)
+sub rsp, 16
+lea rdi, [rsp+0]
+lea rsi, [rsp+32]
+mov rcx, 4
+rep movsb
+lea rdi, [rsp+4]
+lea rsi, [rsp+16]
+mov rcx, 4
+rep movsb
+lea rsi, [rsp]
+lea rdi, [rsp+32]
+mov rcx, 8
+rep movsb
+add rsp, 32
+lea rsi, [rsp]
+lea rdi, [rbp-244]
+mov rcx, 8
+rep movsb
+add rsp, 16
+push 0
+push __float32__(0.0)
+lea rsi, [rsp]
+lea rdi, [rbp-248]
+mov rcx, 4
 rep movsb
 add rsp, 16
 push 0
@@ -696,7 +754,7 @@ mov rcx, 4
 rep movsb
 add rsp, 64
 lea rsi, [rsp]
-lea rdi, [rbp-248]
+lea rdi, [rbp-252]
 mov rcx, 4
 rep movsb
 add rsp, 16
@@ -744,14 +802,14 @@ add rsp, 48
 add rsp, 0
 sub rsp, 0
 sub rsp, 16
-lea rsi, [rbp-248]
+lea rsi, [rbp-252]
 lea rdi, [rsp]
 mov rcx, 4
 rep movsb
 push 0
-push __float32__(0.0)
+push __float32__(10.0)
 push 0
-push __float32__(0.0)
+push __float32__(10.0)
 sub rsp, 16
 lea rdi, [rsp+0]
 lea rsi, [rsp+32]
@@ -767,12 +825,12 @@ mov rcx, 8
 rep movsb
 add rsp, 32
 sub rsp, 16
-lea rsi, [rbp-244]
+lea rsi, [rbp-220]
 lea rdi, [rsp]
 mov rcx, 16
 rep movsb
 sub rsp, 32
-lea rsi, [rbp-64]
+lea rsi, [rbp-44]
 lea rdi, [rsp]
 mov rcx, 20
 rep movsb

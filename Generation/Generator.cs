@@ -677,7 +677,7 @@ public class Generator
                         if(!returnFitsInRegister) result += $"lea r14, [rsp+{offsets.Sum()}]\n";
                         if(offsets.Count > 0) offsets.Dequeue();
                         
-                        var pad = func.Args.Count > 4 && func.Args.Count % 2 != 0;
+                        var pad = func.Args.Count + retOffset > 4 && func.Args.Count % 2 != 0;
                         if(pad) 
                         { 
                             restoreStack += Settings.Bytes; 
@@ -710,11 +710,20 @@ public class Generator
                             else
                             {
                                 extraOffset += Settings.Bytes;
-                                result += $"lea rsi, [rsp+{offset}]\n";
-                                result += "push 0\n";
-                                result += "lea rdi, [rsp]\n";
-                                result += $"mov rcx, {argInfo.ByteSize}\n";
-                                result += "rep movsb\n";
+
+                                if(byPointer)
+                                {
+                                    result += $"lea rax, [rsp+{offset}]\n";
+                                    result += "push rax\n";
+                                }
+                                else
+                                {
+                                    result += $"lea rsi, [rsp+{offset}]\n";
+                                    result += "push 0\n";
+                                    result += "lea rdi, [rsp]\n";
+                                    result += $"mov rcx, {argInfo.ByteSize}\n";
+                                    result += "rep movsb\n";
+                                }
                             }
 
                             if(offsets.Count > 0) offsets.Dequeue();
