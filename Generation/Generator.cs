@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System;
 
 using Borzoi.ASTn;
 
@@ -20,7 +21,7 @@ public class Generator
 
         var label = $"STR_{LastString}@@";
         StringData += 
-        $"{label}: db {string.Join("", bytes.Select(b => b.ToString() + ","))}0\n";
+        $"{label}: db {string.Join("", bytes.Select(b => b.ToString() + ","))}0,0,0,0\n";
         StringData += $"{label}LEN: dq {bytes.Length}\n";
         LastString++;
     }
@@ -509,12 +510,21 @@ public class Generator
         }
         else if(expr is IntLit intlit)
         {
+            string value = intlit.Value.IntValue.ToString();
             if(intlit.Type == VType.Double || intlit.Type == VType.Float)
             {
-                throw new System.Exception();
+                // if(intlit.Type == VType.Double)
+                //     value = BitConverter.ToString(BitConverter.GetBytes(intlit.Value.DoubleValue));
+                // else
+                //     value = BitConverter.ToString(BitConverter.GetBytes(intlit.Value.FloatValue));
+
+                var mod = intlit.Type == VType.Double ? "64" : "32";
+                var v = intlit.Type == VType.Double ? intlit.Value.FloatValue.ToString() : intlit.Value.DoubleValue.ToString();
+                if(!v.Contains(".")) v += ".0";
+                value = $"__float{mod}__({v})";
             }
 
-            result += $"push 0\npush {intlit.Value.IntValue}\n";
+            result += $"push 0\npush {value}\n";
         }
         else if(expr is BoolLit boolLit)
         {
@@ -686,12 +696,13 @@ public class Generator
                             var byPointer = !nonPointerSizes.Contains(argInfo.ByteSize);
                             if(func.Args[i].Type.Is<VArray>()) byPointer = false;
                             var op = byPointer ? "lea" : "mov";
+                            var ft = func.Args[i].Type == VType.Double || func.Args[i].Type == VType.Float;
 
                             // FIXME: Figure out what to do with non 8byte values
-                            if(i == 0)      result += $"{op} rcx, [rsp+{offset}]\n";
-                            else if(i == 1) result += $"{op} rdx, [rsp+{offset}]\n";
-                            else if(i == 2) result += $"{op} r8, [rsp+{offset}]\n";
-                            else if(i == 3) result += $"{op} r9, [rsp+{offset}]\n";
+                            if(i == 0)      result += $"{op} {(ft ? "xmm0" : "rcx")}, [rsp+{offset}]\n";
+                            else if(i == 1) result += $"{op} {(ft ? "xmm1" : "rdx")}, [rsp+{offset}]\n";
+                            else if(i == 2) result += $"{op} {(ft ? "xmm2" :  "r8")}, [rsp+{offset}]\n";
+                            else if(i == 3) result += $"{op} {(ft ? "xmm3" :  "r9")}, [rsp+{offset}]\n";
 
                             else
                             {

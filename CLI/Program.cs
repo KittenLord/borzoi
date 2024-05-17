@@ -81,6 +81,7 @@ public class Program
         ArgValue<string> OutputObjPath,
         ArgValue<string> OutputNasmPath,
         ArgValue<bool?> PlatformWindows,
+        ArgValue<bool> Rawdog,
         ArgValue<bool> DisplayParser)
     BuildArguments(ArgumentParser parser)
     {
@@ -92,6 +93,7 @@ public class Program
             parser.SingleArgument(["--output-nasm", "-onasm"], new(), str => str[0]),
             parser.SingleArgument<bool?>(["--platform", "-p"], new(), str => str[0] switch 
                 { "win" or "win64" => true, "linux" or "lin" or "linux64" or "lin64" => false, _ => null }),
+            parser.FlagArgument(["--rawdog"], new()),
             parser.FlagArgument(["--display-parser", "-parser"], new())
         );
     }
@@ -139,6 +141,7 @@ public class Program
         string outputObjPath = build.OutputObjPath.Get(Path.ChangeExtension(outputPath, "o"));
         string outputNasmPath = build.OutputNasmPath.Get(Path.ChangeExtension(outputPath, "S"));
 
+
         var files = new List<string>();
         foreach(var filePath in filePaths)
         {
@@ -150,8 +153,11 @@ public class Program
         }
 
         var compilerResult = GenerateNasm(files, platformWindows, build.DisplayParser.Get(false));
+
+if(build.Rawdog.Get(false)) goto rawdog;
         if(compilerResult.result.Error) return compilerResult.result;
         File.WriteAllText(outputNasmPath, compilerResult.data!.Nasm);
+rawdog:
 
         var buildResult = BuildExecutable(
                 outputNasmPath, outputObjPath, outputPath, 
