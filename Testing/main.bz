@@ -59,7 +59,7 @@ cfn tofloat(int) float
 fn main() {
     call InitWindow(1600, 900, "Minesweeper")
 
-    let color bg = color!{ 200, 200, 200, 255 }
+    let color bg = color!{ 215, 215, 215, 255 }
 
     let texture closed = LoadTexture("assets/rescaled/closed.png")
     let texture mine = LoadTexture("assets/rescaled/mine.png")
@@ -78,6 +78,7 @@ fn main() {
     let rectangle tileSize = rectangle!{0,0,51,51}
     let vec2 offset = vec2!{0,0}
     let color tint = color!{255,255,255,255}
+    let vec2 origin = vec2!{0,0}
 
     call srand(time(0))
 
@@ -99,9 +100,6 @@ fn main() {
 
             for in from 0 until 3 {
                 for jn from 0 until 3 {
-
-                    call printf("ITER %d %d\n", in, jn)
-
                     if in == 1 { if jn == 1 { continue } }
                     let int id = i + in - 1
                     let int jd = j + jn - 1
@@ -130,16 +128,14 @@ fn main() {
             let cell[] e = grid[0]
 
             for i from 0 until gridWidth {
-                let int x = i*51
                 for j from 0 until gridHeight {
-                    let int y = j*51
-                    let vec2 pos = vec2!{tofloat(x), tofloat(y)}
+                    let rectangle newR = rectangle!{tofloat(i*51), tofloat(j*51), 51, 51}
                     let cell c = grid[i][j]
 
                     if c.mine 
-                        call DrawTextureRec(mine, tileSize, pos, tint)
+                        call DrawTexturePro(mine, tileSize, newR, origin, 0, tint)
                     else
-                        call DrawTextureRec(numbers[c.number], tileSize, pos, tint)
+                        call DrawTexturePro(numbers[c.number], tileSize, newR, origin, 0, tint)
                 }
             }
 

@@ -212,7 +212,7 @@ public class Analyzer
         {
             stack.Push(varn.Name);
             var wname = string.Join("$", stack.Reverse());
-            System.Console.WriteLine($"{varn.Name}");
+            // System.Console.WriteLine($"{varn.Name}");
             var id = Identifiers.Find(i => i.WorkingName == wname);
             if(id is not null) { varn.Type = id.Type; varn.WorkingName = wname; return id; }
             stack.Pop();
@@ -234,10 +234,6 @@ public class Analyzer
             {
                 var id = GetRelevantId(varn, prefix);
                 if(id is not null) type = id.Type;
-                else 
-                {
-                    throw new System.Exception("AWOOGA");
-                }
             }
 
             if(type is null)
@@ -279,7 +275,8 @@ public class Analyzer
 
                     for(int i = 0; i < func.Args.Count; i++)
                     {
-                        var argType = FigureOutTheTypeOfAExpr(prefix, func.Args[i], func.Args[i].Type);
+                        var argHint = i >= funcProto.Args.Count ? VType.Invalid : funcProto.Args[i];
+                        var argType = FigureOutTheTypeOfAExpr(prefix, func.Args[i], argHint);
                         if(i >= funcProto.Args.Count) continue;
                         if(i >= funcProto.Args.Count - 1 && 
                            funcProto.Args.Count > 0 && 
@@ -344,6 +341,10 @@ public class Analyzer
         {
             var types = il.Value.PossibleTypes;
             if(types.Count <= 0) return VType.Invalid;
+
+            System.Console.WriteLine($"POSSIBLE {string.Join("\n", types)}");
+            System.Console.WriteLine($"HINT {hint}");
+
             var type = types.Find(t => t == hint);
             if(type is not null)
             {

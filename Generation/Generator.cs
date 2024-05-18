@@ -699,17 +699,33 @@ public class Generator
                         if(!returnFitsInRegister) result += $"lea r14, [rsp+{offsets.Sum()}]\n";
                         if(offsets.Count > 0) offsets.Dequeue();
                         
-                        var pad = func.Args.Count + retOffset > 4 && func.Args.Count % 2 != 0;
-                        if(pad) 
-                        { 
-                            restoreStack += Settings.Bytes; 
-                            result += "sub rsp, 8\n"; 
-                            offsets.Enqueue(Settings.Bytes);
-                        }
-                        if(func.Args.Count > 4) 
-                            { restoreStack += func.Args.Count * Settings.Bytes; }
-
+                        var checkPad = func.Args.Count + retOffset > 4;
                         int extraOffset = 0;
+                        if(checkPad) 
+                        { 
+                            int reserve = 0;
+                            for(int i = 0; i < func.Args.Count + retOffset; i++)
+                            {
+                                if(i + retOffset < 4) continue;
+                                var ft = func.Args[i].Type == VType.Double || func.Args[i].Type == VType.Float;
+
+                                // if(ft && reserve == reserve.Pad(16))
+                                //     reserve += Settings.Bytes * 2;
+                                // else
+                                    reserve += Settings.Bytes * 1;
+                            }
+
+                            if(reserve != reserve.Pad(16))
+                            {
+                                reserve = reserve.Pad(16);
+                                extraOffset += Settings.Bytes;
+                                result += "sub rsp, 8\n";
+                            }
+                            restoreStack += reserve;
+                        }
+
+                        System.Console.WriteLine($"CFN {cfn.Name} OFF {extraOffset}");
+
 
                         for(int i = func.Args.Count - 1; i >= 0; i--)
                         {
@@ -741,6 +757,13 @@ public class Generator
                                 else
                                 {
                                     result += $"lea rsi, [rsp+{offset}]\n";
+                                    // If already aligned, we must align it better
+                                    // if(ft && extraOffset == extraOffset.Pad(16))
+                                    // {
+                                    //     System.Console.WriteLine($"PAD {cfn.Name}");
+                                    //     extraOffset += Settings.Bytes;
+                                    //     result += "push 0\n";
+                                    // }
                                     result += "push 0\n";
                                     result += "lea rdi, [rsp]\n";
                                     result += $"mov rcx, {argInfo.ByteSize}\n";

@@ -47,8 +47,6 @@ STR_10@@: db 97,115,115,101,116,115,47,114,101,115,99,97,108,101,100,47,55,46,11
 STR_10@@LEN: dq 21
 STR_11@@: db 97,115,115,101,116,115,47,114,101,115,99,97,108,101,100,47,56,46,112,110,103,0,0,0,0
 STR_11@@LEN: dq 21
-STR_12@@: db 73,84,69,82,32,37,100,32,37,100,10,0,0,0,0
-STR_12@@LEN: dq 11
 error@@OutOfBounds: db "You a big stupid, the array has only %d elements and you're trying to access index %d? Are you crazy?!",0xA,0
 error@@SEGFAULT: db "Oopsie daisy, a segfowolt has occurred",0xA,0
 gclen@@: dq -1
@@ -216,11 +214,11 @@ call InitWindow
 add rsp, 80
 add rsp, 0
 push 0
-push 200
+push 215
 push 0
-push 200
+push 215
 push 0
-push 200
+push 215
 push 0
 push 255
 sub rsp, 16
@@ -1256,42 +1254,6 @@ cmp rax, rbx
 je _forend@@@27
 call gcframe@@
 sub rsp, 16
-sub rsp, 16
-lea rsi, [rbp-376]
-lea rdi, [rsp]
-mov rcx, 8
-rep movsb
-sub rsp, 16
-lea rsi, [rbp-368]
-lea rdi, [rsp]
-mov rcx, 8
-rep movsb
-mov rdi, [rel STR_12@@LEN]
-mov rsi, 1
-mov rdx, 1
-push rdi
-push 0
-add rdi, 8
-mov rcx, rdi
-sub rsp, 32
-call calloc
-add rsp, 32
-mov [rsp], rax
-mov r12, rax
-call gcpush@@
-mov rdi, r12
-mov rsi, STR_12@@
-mov rcx, [rel STR_12@@LEN]
-rep movsb
-mov r8, [rsp+32]
-mov rdx, [rsp+16]
-mov rcx, [rsp+0]
-sub rsp, 32
-call printf
-add rsp, 80
-mov [rsp], rax
-add rsp, 16
-sub rsp, 16
 lea rsi, [rbp-368]
 lea rdi, [rsp]
 mov rcx, 8
@@ -1815,24 +1777,6 @@ mov rbx, [rsp+8]
 cmp rax, rbx
 je _forend@@@68
 call gcframe@@
-sub rsp, 16
-lea rsi, [rbp-416]
-lea rdi, [rsp]
-mov rcx, 8
-rep movsb
-push 0
-push 51
-mov rax, [rsp+16]
-mov rbx, [rsp]
-add rsp, 16
-xor rdx, rdx
-imul rbx
-mov [rsp], rax
-lea rsi, [rsp]
-lea rdi, [rbp-424]
-mov rcx, 8
-rep movsb
-add rsp, 16
 push 0
 push 0
 sub rsp, 16
@@ -1845,64 +1789,28 @@ add rsp, 8
 pop rbx
 mov [rsp], rbx
 push rax
-mov [rbp-432], rbx
-jmp _forcheck@@@72
-_forstep@@@74:
+mov [rbp-424], rbx
+jmp _forcheck@@@71
+_forstep@@@73:
 mov rax, [rsp]
 mov rbx, [rsp+8]
 cmp rbx, rax
-jl _fortemp@@@75
+jl _fortemp@@@74
 sub rbx, 2
-_fortemp@@@75:
+_fortemp@@@74:
 inc rbx
 mov [rsp+8], rbx
-mov [rbp-432], rbx
-_forcheck@@@72:
+mov [rbp-424], rbx
+_forcheck@@@71:
 mov rax, [rsp]
 mov rbx, [rsp+8]
 cmp rax, rbx
-je _forend@@@73
+je _forend@@@72
 call gcframe@@
-sub rsp, 16
-lea rsi, [rbp-432]
-lea rdi, [rsp]
-mov rcx, 8
-rep movsb
 push 0
-push 51
-mov rax, [rsp+16]
-mov rbx, [rsp]
-add rsp, 16
-xor rdx, rdx
-imul rbx
-mov [rsp], rax
-lea rsi, [rsp]
-lea rdi, [rbp-440]
-mov rcx, 8
-rep movsb
-add rsp, 16
-sub rsp, 16
-sub rsp, 16
-lea rsi, [rbp-424]
-lea rdi, [rsp]
-mov rcx, 8
-rep movsb
-mov rcx, [rsp+0]
-sub rsp, 32
-call tofloat
-add rsp, 48
-mov [rsp], rax
-sub rsp, 16
-sub rsp, 16
-lea rsi, [rbp-440]
-lea rdi, [rsp]
-mov rcx, 8
-rep movsb
-mov rcx, [rsp+0]
-sub rsp, 32
-call tofloat
-add rsp, 48
-mov [rsp], rax
+push __float32__(0.0)
+push 0
+push __float32__(0.0)
 sub rsp, 16
 lea rdi, [rsp+0]
 lea rsi, [rsp+32]
@@ -1918,8 +1826,77 @@ mov rcx, 8
 rep movsb
 add rsp, 32
 lea rsi, [rsp]
-lea rdi, [rbp-448]
+lea rdi, [rbp-432]
 mov rcx, 8
+rep movsb
+add rsp, 16
+sub rsp, 16
+sub rsp, 16
+lea rsi, [rbp-416]
+lea rdi, [rsp]
+mov rcx, 8
+rep movsb
+push 0
+push 51
+mov rax, [rsp+16]
+mov rbx, [rsp]
+add rsp, 16
+xor rdx, rdx
+imul rbx
+mov [rsp], rax
+mov rcx, [rsp+0]
+sub rsp, 32
+call tofloat
+add rsp, 48
+mov [rsp], rax
+sub rsp, 16
+sub rsp, 16
+lea rsi, [rbp-424]
+lea rdi, [rsp]
+mov rcx, 8
+rep movsb
+push 0
+push 51
+mov rax, [rsp+16]
+mov rbx, [rsp]
+add rsp, 16
+xor rdx, rdx
+imul rbx
+mov [rsp], rax
+mov rcx, [rsp+0]
+sub rsp, 32
+call tofloat
+add rsp, 48
+mov [rsp], rax
+push 0
+push __float32__(51.0)
+push 0
+push __float32__(51.0)
+sub rsp, 16
+lea rdi, [rsp+0]
+lea rsi, [rsp+64]
+mov rcx, 4
+rep movsb
+lea rdi, [rsp+4]
+lea rsi, [rsp+48]
+mov rcx, 4
+rep movsb
+lea rdi, [rsp+8]
+lea rsi, [rsp+32]
+mov rcx, 4
+rep movsb
+lea rdi, [rsp+12]
+lea rsi, [rsp+16]
+mov rcx, 4
+rep movsb
+lea rsi, [rsp]
+lea rdi, [rsp+64]
+mov rcx, 16
+rep movsb
+add rsp, 64
+lea rsi, [rsp]
+lea rdi, [rbp-448]
+mov rcx, 16
 rep movsb
 add rsp, 16
 sub rsp, 16
@@ -1954,7 +1931,7 @@ lea rdi, [rsp]
 mov rcx, 16
 rep movsb
 sub rsp, 16
-lea rsi, [rbp-432]
+lea rsi, [rbp-424]
 lea rdi, [rsp]
 mov rcx, 8
 rep movsb
@@ -2011,10 +1988,17 @@ lea rsi, [rbp-268]
 lea rdi, [rsp]
 mov rcx, 4
 rep movsb
+push 0
+push __float32__(0.0)
+sub rsp, 16
+lea rsi, [rbp-432]
+lea rdi, [rsp]
+mov rcx, 8
+rep movsb
 sub rsp, 16
 lea rsi, [rbp-448]
 lea rdi, [rsp]
-mov rcx, 8
+mov rcx, 16
 rep movsb
 sub rsp, 16
 lea rsi, [rbp-256]
@@ -2026,13 +2010,23 @@ lea rsi, [rbp-44]
 lea rdi, [rsp]
 mov rcx, 20
 rep movsb
-mov r9, [rsp+64]
-mov r8, [rsp+48]
-lea rdx, [rsp+32]
-lea rcx, [rsp+0]
+lea rsi, [rsp+96]
+push 0
+lea rdi, [rsp]
+mov rcx, 4
+rep movsb
+lea rsi, [rsp+88]
+push 0
+lea rdi, [rsp]
+mov rcx, 4
+rep movsb
+mov r9, [rsp+80]
+lea r8, [rsp+64]
+lea rdx, [rsp+48]
+lea rcx, [rsp+16]
 sub rsp, 32
-call DrawTextureRec
-add rsp, 112
+call DrawTexturePro
+add rsp, 160
 add rsp, 0
 call gcclear@@
 jmp _endif@@@81
@@ -2044,10 +2038,17 @@ lea rsi, [rbp-268]
 lea rdi, [rsp]
 mov rcx, 4
 rep movsb
+push 0
+push __float32__(0.0)
+sub rsp, 16
+lea rsi, [rbp-432]
+lea rdi, [rsp]
+mov rcx, 8
+rep movsb
 sub rsp, 16
 lea rsi, [rbp-448]
 lea rdi, [rsp]
-mov rcx, 8
+mov rcx, 16
 rep movsb
 sub rsp, 16
 lea rsi, [rbp-256]
@@ -2095,19 +2096,29 @@ sub rsp, 32
 lea rdi, [rsp]
 mov rcx, 20
 rep movsb
-mov r9, [rsp+64]
-mov r8, [rsp+48]
-lea rdx, [rsp+32]
-lea rcx, [rsp+0]
+lea rsi, [rsp+96]
+push 0
+lea rdi, [rsp]
+mov rcx, 4
+rep movsb
+lea rsi, [rsp+88]
+push 0
+lea rdi, [rsp]
+mov rcx, 4
+rep movsb
+mov r9, [rsp+80]
+lea r8, [rsp+64]
+lea rdx, [rsp+48]
+lea rcx, [rsp+16]
 sub rsp, 32
-call DrawTextureRec
-add rsp, 112
+call DrawTexturePro
+add rsp, 160
 add rsp, 0
 call gcclear@@
 _endif@@@81:
 call gcclear@@
-jmp _forstep@@@74
-_forend@@@73:
+jmp _forstep@@@73
+_forend@@@72:
 add rsp, 16
 call gcclear@@
 jmp _forstep@@@69

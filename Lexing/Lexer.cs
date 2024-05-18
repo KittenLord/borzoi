@@ -279,11 +279,11 @@ public class Lexer
         while(PeekPred(CanBeNum)) nums.Add(Popc());
         if(PeekPred("."))
         {
-            // do while looks too ugly
-            nums.Add(Popc());
+            Popc();
+            nums.Add(',');
             while(PeekPred(CanBeNum)) nums.Add(Popc());
 
-            if(nums.Last() == '.')
+            if(nums.Last() == ',')
             {
                 var t1 = Put(TokenType.Illegal, nums.str());
                 Report(Error.FloatWrongFormat(t1));
