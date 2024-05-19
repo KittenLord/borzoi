@@ -293,7 +293,22 @@ public class Generator
             result += fnBoilerplate;
         }
 
-        result = string.Format(result, StringData);
+        string data = "";
+        
+        foreach(var embed in AST.Embeds)
+        {
+            string label = $"embed@@{embed.Id.Name}";
+            string contentLabel = label + "@@value";
+
+            var bytes = System.IO.File.ReadAllBytes(embed.Path);
+            Console.WriteLine($"BYTES: {bytes.Length}");
+            var tail = bytes.Length == 0 ? "0" : ",0";
+            data += $"{contentLabel}: db {string.Join(",", bytes)}{tail}\n";
+            data += $"{label}: dq {contentLabel},{bytes.Length}\n";
+        }
+
+        data += StringData;
+        result = string.Format(result, data);
 
         return result;
     }
@@ -487,43 +502,72 @@ public class Generator
             result += GenerateExpr(fn, binop.Left);
             result += GenerateExpr(fn, binop.Right);
 
-            if(binop.LeftType == VType.Int && binop.RightType == VType.Int)
+            var ltype = binop.LeftType;
+            if(binop.LeftType == binop.RightType && (ltype == VType.Int || ltype == VType.I32 || ltype == VType.Byte))
             {
                 result += $"mov rax, [rsp+16]\n";
                 result += $"mov rbx, [rsp]\n";
                 result += $"add rsp, 16\n";
 
                 var label = GetLabel();
+            
+                // Holy polymorphism
+                string ax, bx, cx, dx, ce;
+                if(ltype == VType.Int) { ax = "rax"; bx = "rbx"; cx = "rcx"; dx = "rdx"; ce = "cqo"; }
+                else if(ltype == VType.I32) { ax = "eax"; bx = "ebx"; cx = "ecx"; dx = "edx"; ce = "cdq"; }
+                else if(ltype == VType.Byte) { ax = "ax"; bx = "bx"; cx = "cx"; dx = "dx"; ce = "cbw"; }
+                else throw new System.Exception("oopsie daizy");
+
                 result += binop.Operator.Type switch 
                 {
-                    TokenType.Plus => "add rax, rbx\n",
-                    TokenType.Minus => "sub rax, rbx\n",
-                    TokenType.Mul => "xor rdx, rdx\nimul rbx\n",
-                    TokenType.Div => "xor rdx, rdx\ncqo\nidiv rbx\n",
-                    TokenType.Mod => "xor rdx, rdx\ncqo\nidiv rbx\nmov rax, rdx\n",
+                    TokenType.Plus => $"add {ax}, {bx}\n",
+                    TokenType.Minus => $"sub {ax}, {bx}\n",
+                    TokenType.Mul => $"xor {dx}, {dx}\nimul {bx}\n",
+                    TokenType.Div => $"xor {dx}, {dx}\n{ce}\nidiv {bx}\n",
+                    TokenType.Mod => $"xor {dx}, {dx}\n{ce}\nidiv {bx}\nmov {ax}, {dx}\n",
                     TokenType.Modt => 
-                        "xor rdx, rdx\n" +
-                        "cqo\n" + 
-                        "idiv rbx\n" +
-                        "mov rax, rdx\n" +
-                        "add rax, rbx\n" + 
-                        "xor rdx, rdx\n" +
-                        "cqo\n" + 
-                        "idiv rbx\n" +
-                        "mov rax, rdx\n",
+                        $"xor {dx}, {dx}\n" +
+                        $"{ce}\n" +
+                        $"idiv {bx}\n" +
+                        $"mov {ax}, {dx}\n" +
+                        $"add {ax}, {bx}\n" +
+                        $"xor {dx}, {dx}\n" +
+                        $"{ce}\n" +
+                        $"idiv {bx}\n" +
+                        $"mov {ax}, {dx}\n",
 
-                    TokenType.Eq => $"cmp rax, rbx\nmov rax, 1\nje {label}\nmov rax, 0\n{label}:\n",
-                    TokenType.Neq => $"cmp rax, rbx\nmov rax, 1\njne {label}\nmov rax, 0\n{label}:\n",
+                    TokenType.Eq => $"cmp {ax}, {bx}\nmov {ax}, 1\nje {label}\nmov {ax}, 0\n{label}:\n",
+                    TokenType.Neq => $"cmp {ax}, {bx}\nmov {ax}, 1\njne {label}\nmov {ax}, 0\n{label}:\n",
 
-                    TokenType.Ls => $"cmp rax, rbx\nmov rax, 1\njl {label}\nmov rax, 0\n{label}:\n",
-                    TokenType.Le => $"cmp rax, rbx\nmov rax, 1\njle {label}\nmov rax, 0\n{label}:\n",
-                    TokenType.Gr => $"cmp rax, rbx\nmov rax, 1\njg {label}\nmov rax, 0\n{label}:\n",
-                    TokenType.Ge => $"cmp rax, rbx\nmov rax, 1\njge {label}\nmov rax, 0\n{label}:\n",
+                    TokenType.Ls => $"cmp {ax}, {bx}\nmov {ax}, 1\njl {label}\nmov {ax}, 0\n{label}:\n",
+                    TokenType.Le => $"cmp {ax}, {bx}\nmov {ax}, 1\njle {label}\nmov {ax}, 0\n{label}:\n",
+                    TokenType.Gr => $"cmp {ax}, {bx}\nmov {ax}, 1\njg {label}\nmov {ax}, 0\n{label}:\n",
+                    TokenType.Ge => $"cmp {ax}, {bx}\nmov {ax}, 1\njge {label}\nmov {ax}, 0\n{label}:\n",
 
                     _ => throw new System.Exception()
                 };
 
                 result += $"mov [rsp], rax\n";
+            }
+            else if(binop.LeftType == binop.RightType && (ltype == VType.Float || ltype == VType.Double))
+            {
+                result += "movq xmm0, rax\n";
+                result += "movq xmm1, rbx\n";
+
+                string add, sub, mul, div;
+                if(ltype == VType.Float) { add = "addss"; sub = "subss"; mul = "mulss"; div = "divss"; }
+                else if(ltype == VType.Double) { add = "addsd"; sub = "subsd"; mul = "mulsd"; div = "divsd"; }
+                else throw new System.Exception("huh");
+
+                result += binop.Operator.Type switch 
+                {
+                    TokenType.Plus => $"{add} xmm0, xmm1\n",
+                    TokenType.Minus => $"{sub} xmm0, xmm1\n",
+                    TokenType.Mul => $"{mul} xmm0, xmm1\n",
+                    TokenType.Div => $"{div} xmm0, xmm1\n",
+                };
+
+                result += "movq [rsp], xmm0\n";
             }
             else throw new System.Exception();
         }
@@ -539,6 +583,7 @@ public class Generator
 
                 var mod = intlit.Type == VType.Double ? "64" : "32";
                 var v = intlit.Type == VType.Double ? intlit.Value.FloatValue.ToString() : intlit.Value.DoubleValue.ToString();
+                v = v.Replace(",", ".");
                 if(!v.Contains(".")) v += ".0";
                 value = $"__float{mod}__({v})";
             }
@@ -579,7 +624,7 @@ public class Generator
                 var label = GetLabel("not");
 
                 result += "pop rax\n";
-                result += "cmp rax, 0\n";
+                result += "cmp al, 0\n";
                 result += "push 1\n";
                 result += $"je {label}\n";
                 result += "add rsp, 8\n";
@@ -616,24 +661,35 @@ public class Generator
             // System.Console.WriteLine($"FN\n{string.Join("\n", fn.VarsInternal.Select(v => v.WorkingName)).Indent()}");
             // System.Console.WriteLine($"VAR {varl.WorkingName} {varl.WorkingName is null}");
             // System.Console.WriteLine($"FN\n{string.Join("\n", AST.Identifiers.Select(v => v.WorkingName)).Indent()}");
-            var type = AST.Identifiers.Find(id => id.WorkingName == varl.WorkingName)!.Type.Copy();
+            var id = AST.Identifiers.Find(id => id.WorkingName == varl.WorkingName);
+            var type = id!.Type.Copy();
             // System.Console.WriteLine($"{type} {varl.WorkingName}");
             // TODO: I'm almost sure that I fucked up accessors' order here
             if(varl.Accessors.Count == 0 || varl.Accessors.First() is not FuncAcc)
             {
-                var isArg = fn.IsArg(varl.WorkingName, out var sv);
-                var info = sv.Type.GetInfo(AST.TypeInfos);
-                var index = isArg
-                    ? sv.Offset + Settings.Bytes * 2
-                    : sv.Offset;
-                var op = isArg ? "+" : "-";
+                if(!id.IsEmbed)
+                {
+                    var isArg = fn.IsArg(varl.WorkingName, out var sv);
+                    var info = sv.Type.GetInfo(AST.TypeInfos);
+                    var index = isArg
+                        ? sv.Offset + Settings.Bytes * 2
+                        : sv.Offset;
+                    var op = isArg ? "+" : "-";
 
-                result += $"sub rsp, {info.ByteSize.Pad(16)}\n";
-                result += $"lea rsi, [rbp{op}{index}]\n";
-                result += $"lea rdi, [rsp]\n";
-                result += $"mov rcx, {info.ByteSize}\n";
-                result += $"rep movsb\n";
-
+                    result += $"sub rsp, {info.ByteSize.Pad(16)}\n";
+                    result += $"lea rsi, [rbp{op}{index}]\n";
+                    result += $"lea rdi, [rsp]\n";
+                    result += $"mov rcx, {info.ByteSize}\n";
+                    result += $"rep movsb\n";
+                }
+                else 
+                {
+                    result += $"sub rsp, 16\n";
+                    result += $"mov rsi, embed@@{id.WorkingName}\n";
+                    result += $"lea rdi, [rsp]\n";
+                    result += "mov rcx, 16\n";
+                    result += "rep movsb\n";
+                }
             }
             else if(varl.Accessors.First() is FuncAcc func)
             {
@@ -724,11 +780,9 @@ public class Generator
                             restoreStack += reserve;
                         }
 
-                        System.Console.WriteLine($"CFN {cfn.Name} OFF {extraOffset}");
-
-
                         for(int i = func.Args.Count - 1; i >= 0; i--)
                         {
+                            var varargs = cfn.Args.Last()!.Type! == VType.VARARGS && i >= cfn.Args.Count - 1;
                             var offset = offsets.Sum() + extraOffset;
                             var argInfo = func.Args[i].Type.GetInfo(AST.TypeInfos);
 
@@ -739,11 +793,24 @@ public class Generator
                             var op = byPointer ? "lea" : "mov";
                             var ft = func.Args[i].Type == VType.Double || func.Args[i].Type == VType.Float;
 
+                            if (ft && varargs && i + retOffset <= 3)
+                            {
+                                var reg = (i + retOffset) switch {
+                                    0 => "rcx",
+                                    1 => "rdx",
+                                    2 => "r8",
+                                    3 => "r9"
+                                };
+
+                                result += $"mov {reg}, [rsp+{offset}]\n";
+                            }
+
                             // FIXME: Figure out what to do with non 8byte values
-                            if(i + retOffset == 0)      result += $"{op} {(ft ? "xmm0" : "rcx")}, [rsp+{offset}]\n";
-                            else if(i + retOffset == 1) result += $"{op} {(ft ? "xmm1" : "rdx")}, [rsp+{offset}]\n";
-                            else if(i + retOffset == 2) result += $"{op} {(ft ? "xmm2" :  "r8")}, [rsp+{offset}]\n";
-                            else if(i + retOffset == 3) result += $"{op} {(ft ? "xmm3" :  "r9")}, [rsp+{offset}]\n";
+                            if(i + retOffset == 0)      result += $"{op}{(ft ? "q xmm0" : " rcx")}, [rsp+{offset}]\n";
+                            else if(i + retOffset == 1) result += $"{op}{(ft ? "q xmm1" : " rdx")}, [rsp+{offset}]\n";
+                            else if(i + retOffset == 2) result += $"{op}{(ft ? "q xmm2" :  " r8")}, [rsp+{offset}]\n";
+                            else if(i + retOffset == 3) result += $"{op}{(ft ? "q xmm3" :  " r9")}, [rsp+{offset}]\n";
+
 
                             else
                             {

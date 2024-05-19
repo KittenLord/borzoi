@@ -204,6 +204,12 @@ public class Lexer
         if(id == "fn") return Put(TokenType.Fn, id);
         if(id == "cfn") return Put(TokenType.Cfn, id);
         if(id == "from") return Put(TokenType.From, id);
+        if(id == "not") return Put(TokenType.NotFull, id);
+        if(id == "and") return Put(TokenType.And, id);
+        if(id == "or") return Put(TokenType.Or, id);
+        if(id == "xor") return Put(TokenType.Xor, id);
+        if(id == "embed") return Put(TokenType.Embed, id);
+        if(id == "as") return Put(TokenType.As, id);
         if(id == "break") return Put(TokenType.Break, id);
         if(id == "continue") return Put(TokenType.Continue, id);
         if(id == "null") return Put(TokenType.Null, id);

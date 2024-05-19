@@ -78,8 +78,38 @@ public class Parser
                 else throw new System.Exception("fuck you again");
                 continue;
             }
+            if(Peek().Is(TokenType.Embed))
+            {
+                var embed = ParseEmbed();
+                if(embed is not null) { AST.Embeds.Add(embed); }
+                else throw new System.Exception("fuck you yet again");
+                continue;
+            }
             return;
         }
+    }
+
+    public EmbedNode? ParseEmbed()
+    {
+        var origin = Pop();
+
+        if(!Peek().Is(TokenType.StrLit))
+        { Report(Error.Expected([TokenType.StrLit], Peek())); return null; }
+
+        var path = Pop();
+
+        if(!Peek().Is(TokenType.As))
+        { Report(Error.Expected([TokenType.As], Peek())); return null; }
+
+        _ = Pop();
+
+        if(!Peek().Is(TokenType.Id))
+        { Report(Error.Expected([TokenType.Id], Peek())); return null; }
+
+        var id = Pop();
+        var varn = new Var(id, id.Value);
+        
+        return new EmbedNode(origin, path.Value, varn);
     }
 
     public TypedefNode? ParseTypedef()
@@ -168,7 +198,7 @@ public class Parser
             if(Peek().Is(TokenType.Mul))
             {
                 _ = Pop();
-                args.Add((null, null, true));
+                args.Add((VType.VARARGS, null, true));
             }
             else
             {

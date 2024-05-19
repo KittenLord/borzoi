@@ -25,6 +25,8 @@ public enum TokenType
     Type,
     Continue,
     Break,
+    Embed,
+    As,
 
 
     Link,
@@ -32,6 +34,7 @@ public enum TokenType
 
     Plus, Minus, Mul, Div, Mod, Modt,
     Eq, Neq, Ge, Le, Gr, Ls,
+    NotFull, And, Or, Xor,
     Not, 
     Assign,
     Comma,

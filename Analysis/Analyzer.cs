@@ -8,10 +8,13 @@ namespace Borzoi.Analysis;
 
 public class Identifier
 {
-    public string UserName;
+    public string UserName; // this variable name jumpscared me lol
     public string WorkingName;
     public VType Type;
     public Token Definition;
+
+    public string? EmbedPath;
+    public bool IsEmbed => EmbedPath is not null;
 
     public Identifier(string un, string wn, VType type, Token def)
     {
@@ -74,14 +77,17 @@ public class Analyzer
         return original is not null;
     }
 
-    private static readonly TokenType[] IntIntBoolBinops = [TokenType.Eq, TokenType.Neq, TokenType.Ls, TokenType.Le, TokenType.Gr, TokenType.Ge];
-    private static readonly TokenType[] IntIntIntBinops = [TokenType.Plus, TokenType.Minus, TokenType.Mul, TokenType.Div, TokenType.Mod, TokenType.Modt ];
+    private static readonly TokenType[] CompareBinops = [TokenType.Eq, TokenType.Neq, TokenType.Ls, TokenType.Le, TokenType.Gr, TokenType.Ge];
+    private static readonly TokenType[] NumericBinops = [TokenType.Plus, TokenType.Minus, TokenType.Mul, TokenType.Div, TokenType.Mod, TokenType.Modt ];
+    private static readonly TokenType[] FloatBinops = [ TokenType.Plus, TokenType.Minus, TokenType.Mul, TokenType.Div ];
 
     private VType GetBinopResult(Token binop, VType left, VType right)
     {
-        if(IntIntIntBinops.Contains(binop.Type) && left == VType.Int && right == VType.Int) 
-            return VType.Int;
-        if(IntIntBoolBinops.Contains(binop.Type) && left == VType.Int && right == VType.Int) 
+        if(FloatBinops.Contains(binop.Type) && left == right && (left == VType.Float || left == VType.Double))
+            return left.Copy();
+        if(NumericBinops.Contains(binop.Type) && left == right && (left == VType.Int || left == VType.I32 || left == VType.Byte)) 
+            return left.Copy();
+        if(CompareBinops.Contains(binop.Type) && left == right && (left == VType.Int || left == VType.I32 || left == VType.Byte || left == VType.Float || left == VType.Double)) 
             return VType.Bool;
 
         Report(Error.BinaryOperatorUndefined(binop, left, right, binop));
@@ -341,9 +347,6 @@ public class Analyzer
         {
             var types = il.Value.PossibleTypes;
             if(types.Count <= 0) return VType.Invalid;
-
-            System.Console.WriteLine($"POSSIBLE {string.Join("\n", types)}");
-            System.Console.WriteLine($"HINT {hint}");
 
             var type = types.Find(t => t == hint);
             if(type is not null)
@@ -777,6 +780,13 @@ public class Analyzer
             // System.Console.WriteLine($"{type}");
             // System.Console.WriteLine($"{info}");
             // System.Console.WriteLine($"");
+        }
+
+        foreach(var embed in AST.Embeds)
+        {
+            var id = new Identifier(embed.Id.Name, embed.Id.Name, VType.Byte.Modify(VTypeMod.Arr()), embed.Origin);
+            id.EmbedPath = embed.Path;
+            Identifiers.Add(id);
         }
 
         var result = FigureOutTypesAndStuff();

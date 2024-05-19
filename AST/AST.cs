@@ -146,6 +146,20 @@ public class BlockNode : IContainer
     }
 }
 
+public class EmbedNode 
+{
+    public Token Origin;
+    public string Path;
+    public Var Id;
+
+    public EmbedNode(Token origin, string path, Var id)
+    {
+        Origin = origin;
+        Path = path;
+        Id = id;
+    }
+}
+
 public class AST
 {
     public List<Borzoi.Analysis.Identifier> Identifiers;
@@ -153,6 +167,7 @@ public class AST
     public List<FndefNode> Fndefs;
     public List<CFndefNode> CFndefs;
     public List<string> Links;
+    public List<EmbedNode> Embeds;
 
     public List<TypedefNode> TypeDefs;
 
@@ -160,6 +175,7 @@ public class AST
 
     public AST()
     {
+        Embeds = new();
         TypeDefs = new();
         Identifiers = new();
         Fndefs = new();
