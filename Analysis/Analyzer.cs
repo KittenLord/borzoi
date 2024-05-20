@@ -77,12 +77,43 @@ public class Analyzer
         return original is not null;
     }
 
+    private static readonly List<(VType original, VType converted)> AllowedConversions = new(){
+        (VType.Int, VType.I32), // Integer -> Integer
+        (VType.Int, VType.Int),
+        (VType.Int, VType.Byte),
+        (VType.I32, VType.I32),
+        (VType.I32, VType.Int),
+        (VType.I32, VType.Byte),
+        (VType.Byte, VType.I32),
+        (VType.Byte, VType.Int),
+        (VType.Byte, VType.Byte),
+
+        (VType.Int, VType.Double), // Integer -> Double
+        (VType.I32, VType.Double),
+        (VType.Byte, VType.Double),
+
+        (VType.Int, VType.Float), // Integer -> Float
+        (VType.I32, VType.Float),
+        (VType.Byte, VType.Float),
+
+        (VType.Float, VType.Int), // Float -> Integer
+        (VType.Float, VType.I32),
+        (VType.Double, VType.Int),
+        (VType.Double, VType.I32),
+
+        (VType.Float, VType.Double), // Float -> Float
+        (VType.Double, VType.Float),
+    };
+
     private static readonly TokenType[] CompareBinops = [TokenType.Eq, TokenType.Neq, TokenType.Ls, TokenType.Le, TokenType.Gr, TokenType.Ge];
     private static readonly TokenType[] NumericBinops = [TokenType.Plus, TokenType.Minus, TokenType.Mul, TokenType.Div, TokenType.Mod, TokenType.Modt ];
     private static readonly TokenType[] FloatBinops = [ TokenType.Plus, TokenType.Minus, TokenType.Mul, TokenType.Div ];
+    private static readonly TokenType[] BoolBinops = [ TokenType.And, TokenType.Or, TokenType.Xor ];
 
     private VType GetBinopResult(Token binop, VType left, VType right)
     {
+        if(BoolBinops.Contains(binop.Type) && left == right && (left == VType.Bool))
+            return VType.Bool;
         if(FloatBinops.Contains(binop.Type) && left == right && (left == VType.Float || left == VType.Double))
             return left.Copy();
         if(NumericBinops.Contains(binop.Type) && left == right && (left == VType.Int || left == VType.I32 || left == VType.Byte)) 
@@ -189,7 +220,7 @@ public class Analyzer
                 {
                     Report(Error.AlreadyExists(arg.Name, def, fn.Origin));
                     return false;
-                }
+               }
 
                 if(!TypeExists(arg.Type.Name, out _))
                 {
@@ -360,6 +391,28 @@ public class Analyzer
         }
         if(expr is BoolLit) return VType.Bool;
         if(expr is StrLit) return VType.Byte.Modify(VTypeMod.Arr());
+        if(expr is ConvertNode cvt) 
+        {
+            if(!TypeExists(cvt.Type.Name, out _))
+            {
+                Report(Error.UnknownType(cvt.Type.Name, cvt.Origin));
+                return VType.Invalid;
+            }
+
+            var originalType = FigureOutTheTypeOfAExpr(prefix, cvt.Expr, VType.Invalid);
+            if(originalType == VType.Invalid) return VType.Invalid;
+            cvt.Expr.Type = originalType;
+
+            if(originalType == cvt.Type) return cvt.Type.Copy();
+
+            if(!AllowedConversions.Any(c => c.original == originalType && c.converted == cvt.Type))
+            {
+                return VType.Invalid;
+            }
+
+            var pair = AllowedConversions.Find(c => c.original == originalType && c.converted == cvt.Type);
+            return pair.converted.Copy();
+        }
         if(expr is NegateOp negop)
         {
             var type = FigureOutTheTypeOfAExpr(prefix, negop.Expr, hint);

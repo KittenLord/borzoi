@@ -575,7 +575,8 @@ public class Parser
     private static readonly TokenType[] Binops = 
         [TokenType.Plus, TokenType.Minus, TokenType.Mul, TokenType.Div, TokenType.Mod, TokenType.Modt,
          TokenType.Eq, TokenType.Neq, 
-         TokenType.Ls, TokenType.Le, TokenType.Gr, TokenType.Ge];
+         TokenType.Ls, TokenType.Le, TokenType.Gr, TokenType.Ge,
+         TokenType.And, TokenType.Or, TokenType.Xor ];
 
     private bool IsBinop(Token binop) { return Binops.Contains(binop.Type); }
     private int GetBinopPriority(Token binop)
@@ -586,6 +587,8 @@ public class Parser
             TokenType.Ls or TokenType.Le or TokenType.Gr or TokenType.Ge => 0,
             TokenType.Plus or TokenType.Minus => 1,
             TokenType.Mul or TokenType.Div or TokenType.Mod or TokenType.Modt => 2,
+            TokenType.And => -1,
+            TokenType.Or or TokenType.Xor => -2, // NOTE: not sure
             _ => throw new System.Exception($"Token {binop} is not a binary operator kys")
         };
     }
@@ -594,11 +597,12 @@ public class Parser
     private bool CanStartLeaf(TokenType t) => LeafTokens.Contains(t);
     private IExpr? ParseExprLeaf()
     {
+        IExpr? retValue;
         if(!CanStartLeaf(Peek().Type)) throw new System.Exception("FUUUCK");
-        if(Peek().Is(TokenType.IntLit)) return new IntLit(Pop());
-        if(Peek().Is(TokenType.BoolLit)) return new BoolLit(Pop().BoolValue);
-        if(Peek().Is(TokenType.StrLit)) return new StrLit(Pop().StringValue);
-        if(Peek().Is(TokenType.Pointer))
+        else if(Peek().Is(TokenType.IntLit)) retValue = new IntLit(Pop());
+        else if(Peek().Is(TokenType.BoolLit)) retValue = new BoolLit(Pop().BoolValue);
+        else if(Peek().Is(TokenType.StrLit)) retValue = new StrLit(Pop().StringValue);
+        else if(Peek().Is(TokenType.Pointer))
         {
             var origin = Pop();
             if(!Peek().Is(TokenType.Id))
@@ -607,17 +611,23 @@ public class Parser
                 return null;
             }
 
-            var expr = ParseExprLeaf() as Var;
-            if(expr is null) { return null; }
+            var exprr = ParseExprLeaf();
+            if(exprr is null) { return null; }
+            if(exprr is not Var expr)
+            {
+                Report(Error.InvalidPointerTarget(origin));
+                return null;
+            }
+
             if(expr.Accessors.Count > 0 && expr.Accessors.Last() is FuncAcc)
             {
                 Report(Error.InvalidPointerTarget(origin));
                 return null;
             }
 
-            return new PointerOp(origin, expr);
+            retValue = new PointerOp(origin, expr);
         }
-        if(Peek().Is(TokenType.Manual))
+        else if(Peek().Is(TokenType.Manual))
         {
             var origin = Pop();
             if(!CanStartLeaf(Peek().Type))
@@ -629,9 +639,9 @@ public class Parser
             var expr = ParseExprLeaf();
             if(expr is null) { return null; }
 
-            return new ManualOp(origin, expr);
+            retValue = new ManualOp(origin, expr);
         }
-        if(Peek().Is(TokenType.Not))
+        else if(Peek().Is(TokenType.Not))
         {
             var origin = Pop();
             if(!CanStartLeaf(Peek().Type))
@@ -643,9 +653,9 @@ public class Parser
             var expr = ParseExprLeaf();
             if(expr is null) { return null; }
 
-            return new NegateOp(origin, expr);
+            retValue = new NegateOp(origin, expr);
         }
-        if(Peek().Is(TokenType.Minus))
+        else if(Peek().Is(TokenType.Minus))
         {
             var origin = Pop();
             if(!CanStartLeaf(Peek().Type))
@@ -657,9 +667,9 @@ public class Parser
             var expr = ParseExprLeaf();
             if(expr is null) { return null; }
 
-            return new MinusOp(origin, expr);
+            retValue = new MinusOp(origin, expr);
         }
-        if(Peek().Is(TokenType.Id)) 
+        else if(Peek().Is(TokenType.Id)) 
         {
             var corigin = Pop();
 
@@ -707,96 +717,100 @@ public class Parser
 
                 _ = Pop();
 
-                return new ConstructorLit(corigin, new VType(corigin.Value), arguments);
+                retValue = new ConstructorLit(corigin, new VType(corigin.Value), arguments);
             }
-
-            var varn = new Var(corigin, corigin.Value);
-            TokenType[] acclah = [TokenType.LParen, TokenType.LBrack, TokenType.Period, TokenType.Pointer];
-            while(Peek().Is(acclah))
+            else
             {
-                if(Peek().Is(TokenType.LParen))
+                var varn = new Var(corigin, corigin.Value);
+                TokenType[] acclah = [TokenType.LParen, TokenType.LBrack, TokenType.Period, TokenType.Pointer];
+                while(Peek().Is(acclah))
                 {
-                    var func = new FuncAcc();
-                    varn.Accessors.Add(func);
-
-                    _ = Pop();
-
-                    bool exit = false;
-                    if(!Peek().Is(TokenType.RParen))
+                    if(Peek().Is(TokenType.LParen))
                     {
-                        while(CanStartLeaf(Peek().Type))
-                        {
-                            var expr = ParseExpr();
-                            if(expr is null) { return null; }
-                            func.Args.Add(expr);
+                        var func = new FuncAcc();
+                        varn.Accessors.Add(func);
 
-                            if(Peek().Is(TokenType.Comma)) { _ = Pop(); continue; }
-                            if(Peek().Is(TokenType.RParen)) { exit = true; _ = Pop(); break; }
-                        }
-                        if(!exit)
+                        _ = Pop();
+
+                        bool exit = false;
+                        if(!Peek().Is(TokenType.RParen))
                         {
-                            Report(Error.Expected([TokenType.RParen], Peek()));
+                            while(CanStartLeaf(Peek().Type))
+                            {
+                                var expr = ParseExpr();
+                                if(expr is null) { return null; }
+                                func.Args.Add(expr);
+
+                                if(Peek().Is(TokenType.Comma)) { _ = Pop(); continue; }
+                                if(Peek().Is(TokenType.RParen)) { exit = true; _ = Pop(); break; }
+                            }
+                            if(!exit)
+                            {
+                                Report(Error.Expected([TokenType.RParen], Peek()));
+                                return null;
+                            }
+                        }
+                        else Pop();
+                    }
+                    else if(Peek().Is(TokenType.LBrack))
+                    {
+                        var origin = Pop();
+                        if(!CanStartLeaf(Peek().Type))
+                        {
+                            Report(Error.Expected(LeafTokens, Peek()));
                             return null;
                         }
+
+                        var index = ParseExpr();
+                        if(index is null) { return null; }
+
+                        if(!Peek().Is(TokenType.RBrack))
+                        {
+                            Report(Error.Expected([TokenType.RBrack], Peek()));
+                            return null;
+                        }
+
+                        _ = Pop();
+                        varn.Accessors.Add(new ArrayAcc(origin, index));
                     }
-                    else Pop();
-                }
-                else if(Peek().Is(TokenType.LBrack))
-                {
-                    var origin = Pop();
-                    if(!CanStartLeaf(Peek().Type))
+                    else if(Peek().Is(TokenType.Period))
                     {
-                        Report(Error.Expected(LeafTokens, Peek()));
-                        return null;
+                        var origin = Pop();
+                        if(!Peek().Is(TokenType.Id))
+                        {
+                            Report(Error.Expected([TokenType.Id], Peek()));
+                            return null;
+                        }
+
+                        varn.Accessors.Add(new MemberAcc(origin, Pop()));
                     }
-
-                    var index = ParseExpr();
-                    if(index is null) { return null; }
-
-                    if(!Peek().Is(TokenType.RBrack))
+                    else if(Peek().Is(TokenType.Pointer))
                     {
-                        Report(Error.Expected([TokenType.RBrack], Peek()));
-                        return null;
+                        var origin = Pop();
+                        varn.Accessors.Add(new PointerAcc(origin));
                     }
+                }
 
-                    _ = Pop();
-                    varn.Accessors.Add(new ArrayAcc(origin, index));
-                }
-                else if(Peek().Is(TokenType.Period))
-                {
-                    var origin = Pop();
-                    if(!Peek().Is(TokenType.Id))
-                    {
-                        Report(Error.Expected([TokenType.Id], Peek()));
-                        return null;
-                    }
+                retValue = varn;
 
-                    varn.Accessors.Add(new MemberAcc(origin, Pop()));
-                }
-                else if(Peek().Is(TokenType.Pointer))
-                {
-                    var origin = Pop();
-                    varn.Accessors.Add(new PointerAcc(origin));
-                }
             }
 
-            return varn;
         }
-        if(Peek().Is(TokenType.LParen))
+        else if(Peek().Is(TokenType.LParen))
         {
             _ = Pop();
             var expr = ParseExpr();
             if(expr is null) return null;
-            if(Peek().Is(TokenType.RParen)) 
+            if(!Peek().Is(TokenType.RParen)) 
             {
-                Pop();
-                return expr;
+                Report(Error.Expected([TokenType.RParen], Peek()));
+                return null;
             }
 
-            Report(Error.Expected([TokenType.RParen], Peek()));
-            return null;
+            Pop();
+            retValue = expr;
         }
-        if(Peek().Is(TokenType.LBrack))
+        else if(Peek().Is(TokenType.LBrack))
         {
             _ = Pop();
             var arr = new ArrayLit();
@@ -810,21 +824,40 @@ public class Parser
                 if(Peek().Is(TokenType.RBrack)) { break; }
             }
 
-            if(Peek().Is(TokenType.RBrack)) { Pop(); return arr; }
-            Report(Error.Expected([TokenType.Comma, TokenType.RBrack], Peek()));
-            return null;
+            if(!Peek().Is(TokenType.RBrack)) 
+            {  
+                Report(Error.Expected([TokenType.Comma, TokenType.RBrack], Peek()));
+                return null;
+            }
+
+            Pop(); 
+            retValue = arr;
         }
-        if(Peek().Is(TokenType.Mul))
+        else if(Peek().Is(TokenType.Mul))
         {
             var origin = Pop();
             if(!CanStartLeaf(Peek().Type)) 
                 { Report(Error.Expected(LeafTokens, Peek())); return null; }
             var expr = ParseExpr();
             if(expr is null) { return null; }
-            return new ArrayInitOp(origin, expr);
+            retValue = new ArrayInitOp(origin, expr);
         }
-        Report("fuck", Peek());
-        return null;
+        else { throw new System.Exception("FUUUCK"); }
+
+        while(Peek().Is(TokenType.Convert))
+        {
+            var origin = Pop();
+
+            if(!Peek().Is(TokenType.Id))
+            { Report(Error.Expected([TokenType.Id], Peek())); return null; }
+
+            var type = ParseType();
+            if(type is null) { return null; }
+
+            retValue = new ConvertNode(origin, retValue, type);
+        }
+
+        return retValue;
     }
 
     private IExpr? ParseExpr(int precedence = int.MinValue)

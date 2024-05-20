@@ -116,6 +116,7 @@ public class VType
 
     public static bool operator ==(VType l, VType r) => l.Name == r.Name && l.Mods.Count == r.Mods.Count && l.Mods.Select((m, i) => m.Same(r.Mods[i])).All(b => b);
     public static bool operator !=(VType l, VType r) => !(l == r);
+    public override bool Equals(object? obj) { return obj is not null && obj is VType type && type == this; }
 
     public override string ToString() { return (Name == "" ? "void" : Name) + string.Join("", Mods.Select(mod => mod switch { 
                 VFunc fn => $"({string.Join(", ", fn.Args)})", 

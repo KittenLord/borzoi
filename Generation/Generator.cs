@@ -103,15 +103,6 @@ public class Generator
         "int 80h\n" + 
 
 
-        // HACK: Just for demo
-        "tofloat:\n" +
-        "push rbp\n" +
-        "cvtsi2ss xmm0, rcx\n" +
-        "movq rax, xmm0\n" +
-        "pop rbp\n" +
-        "ret\n" +
-
-
 
         "error@@:\n" +
         "push rbp\n" +
@@ -551,6 +542,9 @@ public class Generator
             }
             else if(binop.LeftType == binop.RightType && (ltype == VType.Float || ltype == VType.Double))
             {
+                result += $"mov rax, [rsp+16]\n";
+                result += $"mov rbx, [rsp]\n";
+                result += $"add rsp, 16\n";
                 result += "movq xmm0, rax\n";
                 result += "movq xmm1, rbx\n";
 
@@ -569,6 +563,18 @@ public class Generator
 
                 result += "movq [rsp], xmm0\n";
             }
+            else if(binop.LeftType == binop.RightType && ltype == VType.Bool)
+            {
+                result += $"mov rax, [rsp+16]\n";
+                result += $"mov rbx, [rsp]\n";
+                result += $"add rsp, 16\n";
+
+                // and or xor
+                var op = binop.Operator.Type.ToString().ToLower();
+
+                result += $"{op} al, bl\n";
+                result += "mov [rsp], rax\n";
+            }
             else throw new System.Exception();
         }
         else if(expr is IntLit intlit)
@@ -585,14 +591,48 @@ public class Generator
                 var v = intlit.Type == VType.Double ? intlit.Value.FloatValue.ToString() : intlit.Value.DoubleValue.ToString();
                 v = v.Replace(",", ".");
                 if(!v.Contains(".")) v += ".0";
-                value = $"__float{mod}__({v})";
+                value = $"__?float{mod}?__({v})";
             }
 
-            result += $"push 0\npush {value}\n";
+            result += $"mov rax, {value}\n";
+            result += $"push 0\npush rax\n";
         }
         else if(expr is BoolLit boolLit)
         {
             result += $"push 0\npush {(boolLit.Value ? 1 : 0)}\n";
+        }
+        else if(expr is ConvertNode cvt)
+        {
+            VType[] integerTypes = [ VType.Int, VType.I32, VType.Byte ];
+            var oType = cvt.Expr.Type;
+            var dType = cvt.Type;
+
+            result += GenerateExpr(fn, cvt.Expr);
+
+            if(oType == dType) 
+            {} // Obv
+            else if(integerTypes.Contains(oType) && integerTypes.Contains(dType))
+            {} // Just treat the value differently lulz
+            else if((oType == VType.Float || oType == VType.Double || integerTypes.Contains(oType)) && 
+                    (dType == VType.Float || dType == VType.Double || integerTypes.Contains(dType)))
+            {
+                if(oType == VType.I32) result += "and [rsp], 0xFFFFFFFF\n";
+                if(oType == VType.Byte) result += "and [rsp], 0xFF\n";
+
+                var sourceT = "";
+                if(oType == VType.Float) sourceT = "ss";
+                else if(oType == VType.Double) sourceT = "sd";
+                else sourceT = "si";
+
+                var destT = "";
+                if(dType == VType.Float) destT = "ss";
+                else if(dType == VType.Double) destT = "sd";
+                else destT = "si";
+
+                result += $"cvt{sourceT}2{destT} xmm0, [rsp]\n";
+                result += $"movq [rsp], xmm0\n";
+            }
+            else throw new System.Exception("wwwwwwwwwwwww");
         }
         else if(expr is StrLit strlit)
         {

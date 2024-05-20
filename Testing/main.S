@@ -7,9 +7,8 @@ extern printf
 extern ExitProcess
 extern signal
 section .data
-num: dd __?float32?__(69.3)
-STR_0@@: db "%f",0,0,0,0
-STR_0@@LEN: dq 2
+STR_0@@: db 37,102,10,0,0,0,0
+STR_0@@LEN: dq 3
 error@@OutOfBounds: db "You a big stupid, the array has only %d elements and you're trying to access index %d? Are you crazy?!",0xA,0
 error@@SEGFAULT: db "Oopsie daisy, a segfowolt has occurred",0xA,0
 gclen@@: dq -1
@@ -147,15 +146,17 @@ push rbp
 mov rbp, rsp
 sub rsp, 16
 call gcframe@@
+mov rax, __?float32?__(15.3)
 push 0
-push __float32__(1.2)
+push rax
 lea rsi, [rsp]
 lea rdi, [rbp-4]
 mov rcx, 4
 rep movsb
 add rsp, 16
+mov rax, __?float32?__(54.3)
 push 0
-push __float32__(3.4)
+push rax
 lea rsi, [rsp]
 lea rdi, [rbp-8]
 mov rcx, 4
@@ -171,6 +172,9 @@ lea rsi, [rbp-8]
 lea rdi, [rsp]
 mov rcx, 4
 rep movsb
+mov rax, [rsp+16]
+mov rbx, [rsp]
+add rsp, 16
 movq xmm0, rax
 movq xmm1, rbx
 addss xmm0, xmm1
@@ -181,11 +185,8 @@ mov rcx, 4
 rep movsb
 add rsp, 16
 sub rsp, 16
-sub rsp, 16
-lea rsi, [rbp-4]
-lea rdi, [rsp]
-mov rcx, 4
-rep movsb
+cvtss2sd xmm0, [rsp]
+movq [rsp], xmm0
 mov rdi, [rel STR_0@@LEN]
 mov rsi, 1
 mov rdx, 1
@@ -203,9 +204,8 @@ mov rdi, r12
 mov rsi, STR_0@@
 mov rcx, [rel STR_0@@LEN]
 rep movsb
-movss xmm1, [rel num]
-cvtss2sd xmm1, xmm1 ; IMPORTANT
-movq rdx, xmm1
+mov rdx, [rsp+16]
+movq xmm1, [rsp+16]
 mov rcx, [rsp+0]
 sub rsp, 32
 call printf

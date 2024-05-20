@@ -42,6 +42,7 @@ public enum TokenType
     Pointer,
     Manual,
     ManualBlock,
+    Convert,
 
 
     Id,

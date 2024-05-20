@@ -1,11 +1,10 @@
 cfn printf(byte[] fmt, *) i32
 
 fn main() {
-
-    let float a = 1.2
-    let float b = 3.4
+    let float a = 15.3
+    let float b = 54.3
 
     let float c = a + b
 
-    call printf("%f", a)
+    call printf("%f\n", c->double)
 }

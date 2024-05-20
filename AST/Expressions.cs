@@ -158,6 +158,16 @@ public class PointerOp : IExpr
     public override string ToString() { return $"@\n{Expr.ToString().Indent()}"; }
 }
 
+public class ConvertNode : IExpr
+{
+    public VType Type { get; set; }
+    public Token Origin;
+    public IExpr Expr;
+
+    public ConvertNode(Token origin, IExpr expr, VType type) { Origin = origin; Expr = expr; Type = type; }
+    public override string ToString() { return $"-> {Type}\n{Expr.ToString().Indent()}"; }
+}
+
 public class ManualOp : IExpr
 {
     public VType? Type { get; set; }

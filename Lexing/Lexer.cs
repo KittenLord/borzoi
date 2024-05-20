@@ -81,7 +81,7 @@ public class Lexer
         if(PeekPred(Eq('\"'))) return ReadString();
 
         if(PeekPred(Eq('+'))) return Put(TokenType.Plus, Popc());
-        if(PeekPred(Eq('-'))) return Put(TokenType.Minus, Popc());
+        //if(PeekPred(Eq('-'))) return Put(TokenType.Minus, Popc());
         if(PeekPred(Eq('*'))) return Put(TokenType.Mul, Popc());
         if(PeekPred(Eq('/'))) return Put(TokenType.Div, Popc());
         if(PeekPred(Eq(','))) return Put(TokenType.Comma, Popc());
@@ -95,7 +95,7 @@ public class Lexer
         if(PeekPred(Eq('['))) return Put(TokenType.LBrack, Popc());
         if(PeekPred(Eq(']'))) return Put(TokenType.RBrack, Popc());
 
-        if(PeekPred(Eq('=', '<', '>', '!', '&', '%'))) return ReadOperator();
+        if(PeekPred(Eq('=', '<', '>', '!', '&', '%', '-'))) return ReadOperator();
 
         Popc();
         return Put(TokenType.Illegal);
@@ -143,6 +143,14 @@ public class Lexer
 
     private Token ReadOperator()
     {
+        if(PeekPred(Eq('-')))
+        {
+            Popc();
+            if(PeekPred(Eq('>')))
+            { Popc(); return Put(TokenType.Convert, "->"); }
+            return Put(TokenType.Minus, "-");
+        }
+
         if(PeekPred(Eq('%')))
         {
             Popc();
