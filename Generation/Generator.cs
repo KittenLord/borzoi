@@ -277,7 +277,7 @@ public class Generator
             "pop rbp\n" + 
             "ret\n";
 
-            string fnCode = GenerateBlock(fn, fn.Block, 0, "", "");
+            string fnCode = GenerateBlock(fn, fn.Block, 0, 0, "", "");
 
             fnBoilerplate = string.Format(fnBoilerplate, fnCode);
 
@@ -304,11 +304,11 @@ public class Generator
         return result;
     }
 
-    private string GenerateBlock(FndefNode fn, BlockNode block, int nest, string continueLabel, string breakLabel)
+    private string GenerateBlock(FndefNode fn, BlockNode block, int gcNest, int gcLoopNest, string continueLabel, string breakLabel)
     {
         string fnCode = "";
         if(!block.Manual) fnCode += "call gcframe@@\n";
-        if(!block.Manual) nest++;
+        if(!block.Manual) { gcNest++; gcLoopNest++; }
 
         foreach(var line in block.Statements)
         {
@@ -380,7 +380,7 @@ public class Generator
                     fnCode += "rep movsb\n";
                 }
 
-                fnCode += "call gcclear@@\n".Repeat(nest);
+                fnCode += "call gcclear@@\n".Repeat(gcNest);
 
                 fnCode += "mov rsp, rbp\n";
                 fnCode += "pop rbp\n";
@@ -388,10 +388,12 @@ public class Generator
             }
             else if(line is BreakNode)
             {
+                fnCode += "call gcclear@@\n".Repeat(gcLoopNest);
                 fnCode += $"jmp {breakLabel}\n";
             }
             else if(line is ContinueNode)
             {
+                fnCode += "call gcclear@@\n".Repeat(gcLoopNest);
                 fnCode += $"jmp {continueLabel}\n";
             }
             else if(line is IfNode ifn)
@@ -402,14 +404,14 @@ public class Generator
                 fnCode += GenerateExpr(fn, ifn.Condition);
                 fnCode += $"mov rax, [rsp]\nadd rsp, 16\nand rax, 1\ncmp rax, 1\njne {label}\n";
 
-                fnCode += GenerateBlock(fn, ifn.Block, nest, continueLabel, breakLabel);
+                fnCode += GenerateBlock(fn, ifn.Block, gcNest, gcLoopNest, continueLabel, breakLabel);
 
                 fnCode += $"jmp {endifLabel}\n";
                 fnCode += $"{label}:\n";
 
                 if(ifn.Else is not null)
                 {
-                    fnCode += GenerateBlock(fn, ifn.Else, nest, continueLabel, breakLabel);
+                    fnCode += GenerateBlock(fn, ifn.Else, gcNest, gcLoopNest, continueLabel, breakLabel);
                 }
 
                 fnCode += $"{endifLabel}:\n";
@@ -428,7 +430,7 @@ public class Generator
                 condition += $"cmp rax, 1\n";
                 condition += $"jne {endLabel}\n";
 
-                var blockCode = GenerateBlock(fn, wh.Block, nest, conditionLabel, endLabel);
+                var blockCode = GenerateBlock(fn, wh.Block, gcNest, 0, conditionLabel, endLabel);
 
                 fnCode += $"{doLabel}:\n";
                 if(!wh.Do) { fnCode += condition + blockCode; }
@@ -470,7 +472,7 @@ public class Generator
                 fnCode += "cmp rax, rbx\n";
                 fnCode += $"je {endLabel}\n";
 
-                fnCode += GenerateBlock(fn, forn.Block, nest, stepLabel, endLabel);
+                fnCode += GenerateBlock(fn, forn.Block, gcNest, 0, stepLabel, endLabel);
                 fnCode += $"jmp {stepLabel}\n";
                 fnCode += $"{endLabel}:\n";
                 fnCode += $"add rsp, 16\n";
@@ -548,9 +550,22 @@ public class Generator
                 result += "movq xmm0, rax\n";
                 result += "movq xmm1, rbx\n";
 
-                string add, sub, mul, div;
-                if(ltype == VType.Float) { add = "addss"; sub = "subss"; mul = "mulss"; div = "divss"; }
-                else if(ltype == VType.Double) { add = "addsd"; sub = "subsd"; mul = "mulsd"; div = "divsd"; }
+                var label = GetLabel();
+                string ax = "rax";
+                string add, sub, mul, div, cmp;
+
+                int cmpop = binop.Operator.Type switch {
+                    TokenType.Eq => 0,
+                    TokenType.Ls => 1,
+                    TokenType.Le => 2,
+                    TokenType.Neq => 4,
+                    TokenType.Gr => 6,
+                    TokenType.Ge => 5,
+                    _ => -1
+                };
+
+                if(ltype == VType.Float) { add = "addss"; sub = "subss"; mul = "mulss"; div = "divss"; cmp = "cmpss"; }
+                else if(ltype == VType.Double) { add = "addsd"; sub = "subsd"; mul = "mulsd"; div = "divsd"; cmp = "cmpsd"; }
                 else throw new System.Exception("huh");
 
                 result += binop.Operator.Type switch 
@@ -559,6 +574,10 @@ public class Generator
                     TokenType.Minus => $"{sub} xmm0, xmm1\n",
                     TokenType.Mul => $"{mul} xmm0, xmm1\n",
                     TokenType.Div => $"{div} xmm0, xmm1\n",
+
+                    TokenType.Eq or TokenType.Neq or
+                    TokenType.Ls or TokenType.Le or
+                    TokenType.Gr or TokenType.Gr => $"{cmp} xmm0, xmm1, {cmpop}\nmovq rax, xmm0\nand rax, 1\nmovq xmm0, rax\n",
                 };
 
                 result += "movq [rsp], xmm0\n";
