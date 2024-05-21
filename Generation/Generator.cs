@@ -648,8 +648,17 @@ public class Generator
                 else if(dType == VType.Double) destT = "sd";
                 else destT = "si";
 
-                result += $"cvt{sourceT}2{destT} xmm0, [rsp]\n";
-                result += $"movq [rsp], xmm0\n";
+                if(destT == "si")
+                {
+                    result += "movq xmm0, [rsp]\n";
+                    result += $"cvt{sourceT}2{destT} rax, xmm0\n";
+                    result += $"mov [rsp], rax\n";
+                }
+                else
+                {
+                    result += $"cvt{sourceT}2{destT} xmm0, [rsp]\n";
+                    result += $"movq [rsp], xmm0\n";
+                }
             }
             else throw new System.Exception("wwwwwwwwwwwww");
         }
