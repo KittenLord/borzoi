@@ -808,6 +808,7 @@ public class Generator
 
                         int[] nonPointerSizes = [0, 1, 2, 4, 8];
                         bool returnFitsInRegister = nonPointerSizes.Contains(retTypeInfo.ByteSize);
+                        bool returnFloat = cfn.RetType == VType.Float || cfn.RetType == VType.Double;
                         int retOffset = !returnFitsInRegister ? 1 : 0;
                         int restoreStack = 32;
 
@@ -914,6 +915,8 @@ public class Generator
                         result += $"call {cfn.CName}\n";
                         result += $"add rsp, {restoreStack}\n";
 
+                        if(returnFloat)
+                            result += "movq rax, xmm0\n";
                         if(returnFitsInRegister && retTypeInfo.ByteSize > 0) 
                             result += $"mov [rsp], rax\n";
                     }
