@@ -3,6 +3,8 @@ using System.Linq;
 using System.Collections.Generic;
 
 namespace Borzoi.Lexing;
+
+using System.Globalization;
 using Borzoi.Lexing.Msg;
 
 public class Lexer
@@ -294,17 +296,17 @@ public class Lexer
         if(PeekPred("."))
         {
             Popc();
-            nums.Add(',');
+            nums.Add('.');
             while(PeekPred(CanBeNum)) nums.Add(Popc());
 
-            if(nums.Last() == ',')
+            if(nums.Last() == '.')
             {
                 var t1 = Put(TokenType.Illegal, nums.str());
                 Report(Error.FloatWrongFormat(t1));
                 return t1;
             }
 
-            if(!double.TryParse(nums.str(), out var f))
+            if(!double.TryParse(nums.str(), System.Globalization.NumberStyles.Any, CultureInfo.InvariantCulture, out var f))
             {
                 var t2 = Put(TokenType.Illegal, nums.str());
                 Report(Error.FloatWrongFormat(t2));
@@ -312,6 +314,9 @@ public class Lexer
             }
 
             var token = Put(TokenType.IntLit, nums.str());
+
+            System.Console.WriteLine($"ORIGINAL: {nums.str()} {f}");
+
             token.DoubleValue = f;
             token.FloatValue = (float)f;
             token.PossibleTypes.Add(VType.Double);
