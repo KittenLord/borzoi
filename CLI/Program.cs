@@ -48,18 +48,88 @@ public class Program
         {
             [ "build", .. ] => BorzoiBuild(argsList, false),
             [ "run", .. ] => BorzoiBuild(argsList, true),
-            [ .. ] => BorzoiInfo(argsList),
+            [ "version", .. ] or 
+                [ "--version", .. ] or 
+                [ "-v", ..] => BorzoiVersion(argsList),
+            [ "help", .. ] or
+                [ "--help", .. ] or
+                [ "-h", .. ] => BorzoiHelp(argsList),
+            [] => BorzoiImage(argsList),
+            [ .. ] => BorzoiUsage(argsList, false),
         };
 
         if(result.Message != "")
         {
+            Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine(result.Message);
         }
 
         return result.Code;
     }
 
-    private static Result BorzoiInfo(Stack<string> args)
+    private static Result BorzoiVersion(Stack<string> args)
+    {
+        Console.WriteLine($"Current version: {Settings.Version}");
+        Console.WriteLine($"You can ompare it to the current one at {Settings.Link}");
+        return new();
+    }
+
+    private static Result BorzoiHelp(Stack<string> args)
+    {
+        args.Pop();
+        if(args.Count <= 0) return BorzoiUsage(args, true);
+        var subcommand = args.Pop();
+
+        // This is kinda bad, but I don't want to redesign this
+        var parser = new ArgumentParser();
+        if(subcommand == "build" || subcommand == "run")
+        {
+            BuildArguments(parser);
+            if(subcommand == "run")
+            { parser.FlagArgument(["--exit-code"], new(), description: "Display the exit code after program's execution"); }
+
+            foreach(var argument in parser.PositionalArguments)
+            {
+                var list = argument.Tail ? "..." : "";
+                Console.WriteLine($"<{list}{argument.Aliases.First()}> - {argument.Description}");
+                if(argument.AllowedValues != "") Console.WriteLine($"\tAllowed values: {argument.AllowedValues}");
+                if(argument.Aliases.Count > 1) Console.WriteLine($"\tAliases: {string.Join(", ", argument.Aliases)}");
+                Console.WriteLine();
+            }
+
+            foreach(var argument in parser.SpecifiedArguments)
+            {
+                var list = argument.Tail ? "..." : "";
+                Console.WriteLine($"[{list}{argument.Aliases.First()}] - {argument.Description}");
+                if(argument.AllowedValues != "") Console.WriteLine($"\tAllowed values: {argument.AllowedValues}");
+                if(argument.Aliases.Count > 1) Console.WriteLine($"\tAliases: {string.Join(", ", argument.Aliases)}");
+                Console.WriteLine();
+            }
+
+            return new();
+        }
+
+        return BorzoiUsage(args, false);
+    }
+
+    private static Result BorzoiUsage(Stack<string> args, bool intentional)
+    {
+        Result result = intentional ? new() : new(1, "");
+        if(!intentional)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("Unknown usage!");
+            Console.ForegroundColor = ConsoleColor.White;
+        }
+        Console.WriteLine("Usage:\n");
+        Console.WriteLine("Build program - borzoi build <..files> [..options]");
+        Console.WriteLine("Build and run program - borzoi run <..files> [..options]");
+        Console.WriteLine("View the version - borzoi version");
+        Console.WriteLine("Do the funny - borzoi");
+        return result;
+    }
+
+    private static Result BorzoiImage(Stack<string> args)
     {
         var consoleWidth = Console.WindowWidth;
         var images = Images.Collection
@@ -87,16 +157,16 @@ public class Program
     BuildArguments(ArgumentParser parser)
     {
         return (
-            parser.TailArgument(0, new(), str => str[0]),
-            parser.ListArgument(["--lib-search-path", "-ls"], new(), str => str[0]),
-            parser.SingleArgument(["--output", "-o"], new(), str => str[0]),
-            parser.SingleArgument(["--output-obj", "-oo"], new(), str => str[0]),
-            parser.SingleArgument(["--output-nasm", "-onasm"], new(), str => str[0]),
+            parser.TailArgument(0, "files", new(), str => str[0], description: "File(-s) to be compiled"),
+            parser.ListArgument(["--lib-search-path", "-ls"], new(), str => str[0], description: "Folders to search for libraries"),
+            parser.SingleArgument(["--output", "-o"], new(), str => str[0], description: "Executable output path"),
+            parser.SingleArgument(["--output-obj", "-oo"], new(), str => str[0], description: "Object file output path"),
+            parser.SingleArgument(["--output-nasm", "-onasm"], new(), str => str[0], description: "Nasm file output path"),
             parser.SingleArgument<bool?>(["--platform", "-p"], new(), str => str[0] switch 
-                { "win" or "win64" => true, "linux" or "lin" or "linux64" or "lin64" => false, _ => null }),
-            parser.FlagArgument(["--rawdog"], new()),
-            parser.FlagArgument(["--display-parser", "-parser"], new()),
-            parser.FlagArgument(["--display-lexer", "-lexer"], new())
+                { "win" or "win64" => true, "linux" or "lin" or "linux64" or "lin64" => false, _ => null }, description: "Target platform", allowedValues: "win, linux"),
+            parser.FlagArgument(["--rawdog"], new(), description: "Disable the borzoi compiler, only rebuild the nasm file, in case you need to rawdog assembly"),
+            parser.FlagArgument(["--display-parser", "-parser"], new(), description: "Display the output of the parsing step"),
+            parser.FlagArgument(["--display-lexer", "-lexer"], new(), description: "Display the output of the lexing step")
         );
     }
     
@@ -174,6 +244,7 @@ rawdog:
             var process = new Process();
             process.StartInfo = new(outputPath) 
             { UseShellExecute = false };
+            Console.WriteLine("OUTPUT_PATH: " + outputPath);
             process.Start();
             process.WaitForExit();
 

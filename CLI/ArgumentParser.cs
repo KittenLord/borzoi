@@ -19,7 +19,7 @@ public class ArgValue<T>
 
 public class ArgumentParser
 {
-    private class Argument
+    public class Argument
     {
         public List<string> Aliases = new();
 
@@ -32,12 +32,17 @@ public class ArgumentParser
         public Func<List<string>, object?> Parser = default;
 
         public Func<Stack<string>, Argument, bool> Handler = default;
+
+        public string Description = "";
+        public string AllowedValues = "";
     }
 
     private List<Argument> ArgumentDefinitions = new();
+    public IReadOnlyList<Argument> SpecifiedArguments => ArgumentDefinitions; // please dont mutate this list uwu
 
     private int Position;
     private List<Argument> PositionalArgumentDefinitions = new();
+    public IReadOnlyList<Argument> PositionalArguments => PositionalArgumentDefinitions;
 
     private bool HandleSingleArgument<T>(Stack<string> args, Argument argument)
         => HandleArgument<T>(args, argument, (reference, value) => ((ArgValue<T>)reference).Set(value));
@@ -66,61 +71,73 @@ public class ArgumentParser
 
 
 
-    public ArgValue<T> SingleArgument<T>(List<string> aliases, ArgValue<T> reference, Func<List<string>, T?> parser, int span = 1)
-        => SpecifiedArgument(aliases, reference, HandleSingleArgument<T>, parser, span);
+    public ArgValue<T> SingleArgument<T>(List<string> aliases, ArgValue<T> reference, Func<List<string>, T?> parser, int span = 1, string description = "", string allowedValues = "")
+        => SpecifiedArgument(aliases, reference, HandleSingleArgument<T>, parser, span, description, allowedValues, false);
     
-    public List<T> ListArgument<T>(List<string> aliases, List<T> reference, Func<List<string>, T?> parser, int span = 1)
-        => SpecifiedArgument(aliases, reference, HandleListArgument<T>, parser, span);
+    public List<T> ListArgument<T>(List<string> aliases, List<T> reference, Func<List<string>, T?> parser, int span = 1, string description = "", string allowedValues = "")
+        => SpecifiedArgument(aliases, reference, HandleListArgument<T>, parser, span, description, allowedValues, true);
 
-    public ArgValue<bool> FlagArgument(List<string> aliases, ArgValue<bool> reference, bool value = true)
-        => SpecifiedArgument(aliases, reference, HandleSingleArgument<bool>, _ => value, 0);
+    public ArgValue<bool> FlagArgument(List<string> aliases, ArgValue<bool> reference, bool value = true, string description = "", string allowedValues = "")
+        => SpecifiedArgument(aliases, reference, HandleSingleArgument<bool>, _ => value, 0, description, allowedValues, false);
 
     private R SpecifiedArgument<T, R>(
         List<string> aliases, 
         R reference, 
         Func<Stack<string>, Argument, bool> handler, 
         Func<List<string>, T?> parser,
-        int span)
+        int span,
+        string description,
+        string allowedValues,
+        bool isList)
     {
         if(ArgumentDefinitions.Any(arg => arg.Aliases.Any(alias => aliases.Contains(alias))))
         { throw new System.Exception("Bad"); }
 
         ArgumentDefinitions.Add(new Argument{ 
+            Tail = isList,
             Aliases = aliases,
             Span = span,
             Reference = reference,
             Handler = handler,
             Parser = list => parser(list),
+            Description = description,
+            AllowedValues = allowedValues
         });
 
         return reference;
     }
 
 
-    public ArgValue<T> PositionalArgument<T>(int position, ArgValue<T> reference, Func<List<string>, T?> parser, int span = 1)
-        => BasePositionalArgument(position, false, reference, HandleSingleArgument<T>, parser, span);
+    public ArgValue<T> PositionalArgument<T>(int position, string name, ArgValue<T> reference, Func<List<string>, T?> parser, int span = 1, string description = "", string allowedValues = "")
+        => BasePositionalArgument(position, name, false, reference, HandleSingleArgument<T>, parser, span, description, allowedValues);
 
-    public List<T> TailArgument<T>(int position, List<T> reference, Func<List<string>, T?> parser, int span = 1)
-        => BasePositionalArgument(position, true, reference, HandleListArgument<T>, parser, span);
+    public List<T> TailArgument<T>(int position, string name, List<T> reference, Func<List<string>, T?> parser, int span = 1, string description = "", string allowedValues = "")
+        => BasePositionalArgument(position, name, true, reference, HandleListArgument<T>, parser, span, description, allowedValues);
 
     private R BasePositionalArgument<T, R>(
         int position, 
+        string name,
         bool tail,
         R reference, 
         Func<Stack<string>, Argument, bool> handler,
         Func<List<string>, T?> parser,
-        int span)
+        int span,
+        string description,
+        string allowedValues)
     {
         if(PositionalArgumentDefinitions.Any(arg => arg.Position >= position))
         { throw new System.Exception("Bad"); }
 
         PositionalArgumentDefinitions.Add(new Argument{ 
             Position = position,
+            Aliases = [name],
             Span = span,
             Tail = tail,
             Reference = reference,
             Handler = handler,
             Parser = (str) => parser(str),
+            Description = description,
+            AllowedValues = allowedValues
         });
 
         return reference;
