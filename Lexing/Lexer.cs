@@ -315,8 +315,6 @@ public class Lexer
 
             var token = Put(TokenType.IntLit, nums.str());
 
-            System.Console.WriteLine($"ORIGINAL: {nums.str()} {f}");
-
             token.DoubleValue = f;
             token.FloatValue = (float)f;
             token.PossibleTypes.Add(VType.Double);
