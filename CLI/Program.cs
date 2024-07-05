@@ -62,6 +62,8 @@ public class Program
         {
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine(result.Message);
+            Console.WriteLine();
+            Console.ForegroundColor = ConsoleColor.White;
         }
 
         return result.Code;
@@ -262,7 +264,6 @@ rawdog:
             var process = new Process();
             process.StartInfo = new(outputPath) 
             { UseShellExecute = false };
-            Console.WriteLine("OUTPUT_PATH: " + outputPath);
             process.Start();
             process.WaitForExit();
 

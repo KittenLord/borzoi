@@ -536,7 +536,7 @@ public class Analyzer
         {
             if(hint == VType.Bool) hint = VType.Invalid;
             var leftType = FigureOutTheTypeOfAExpr(prefix, binop.Left, hint);
-            if(hint == VType.Invalid) hint = leftType.Copy();
+            /* if(hint == VType.Invalid) */ hint = leftType.Copy();
             var rightType = FigureOutTheTypeOfAExpr(prefix, binop.Right, hint);
             var result = GetBinopResult(binop.Operator, leftType, rightType);
             binop.Type = result;
