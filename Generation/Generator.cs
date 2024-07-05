@@ -292,7 +292,7 @@ public class Generator
             string contentLabel = label + "@@value";
 
             var bytes = System.IO.File.ReadAllBytes(embed.Path);
-            Console.WriteLine($"BYTES: {bytes.Length}");
+            // Console.WriteLine($"BYTES: {bytes.Length}");
             var tail = bytes.Length == 0 ? "0" : ",0";
             data += $"{contentLabel}: db {string.Join(",", bytes)}{tail}\n";
             data += $"{label}: dq {contentLabel},{bytes.Length}\n";
