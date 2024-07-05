@@ -291,6 +291,10 @@ What I want to do next
 
 ## Installation
 
+You need to have NASM and GCC (MINGW64) installed!
+NASM - https://www.nasm.us/pub/nasm/releasebuilds/2.16.03/
+MINGW64 (Windows) - https://code.visualstudio.com/docs/cpp/config-mingw
+
 You can clone the source code with
 
 ```
