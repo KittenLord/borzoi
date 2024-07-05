@@ -126,6 +126,15 @@ public class ContinueNode : IStatement {
     public override string ToString() { return "CONTINUE"; }
 }
 
+public class CollectNode : IStatement
+{
+    public Token Origin;
+    public IExpr Expr;
+
+    public CollectNode(Token origin, IExpr expr) { Origin = origin; Expr = expr; }
+    public override string ToString() { return $"COLLECT\n{Expr.ToString().Indent()}"; }
+}
+
 public class CallNode : IStatement
 {
     public Token Origin;

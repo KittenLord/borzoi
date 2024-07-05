@@ -68,6 +68,11 @@ namespace Borzoi.Analysis.Msg
     // TODO: Add message positions for some errors that I was too lazy to implement
     public static class Error
     {
+        public static Message NotPointerType(VType type, Token origin) =>
+        new Message(
+            $"Type {type} is not a pointer type",
+            origin);
+
         public static Message CantFigureTypes(List<Borzoi.ASTn.TypedefNode> types) =>
         new Message(
             $"Cannot figure out types. There is most probably a circular reference somewhere among there types: {string.Join(", ", types.Select(t => t.Name))}",

@@ -396,6 +396,11 @@ public class Generator
                 fnCode += "call gcclear@@\n".Repeat(gcLoopNest);
                 fnCode += $"jmp {continueLabel}\n";
             }
+            else if(line is CollectNode collect)
+            {
+                fnCode += GenerateExpr(fn, collect.Expr);
+                fnCode += "mov r12, [rsp]\ncall gcpush@@\nadd rsp, 16\n";
+            }
             else if(line is IfNode ifn)
             {
                 var endifLabel = GetLabel("endif");

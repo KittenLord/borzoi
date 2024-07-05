@@ -234,6 +234,7 @@ public class Lexer
         if(id == "for") return Put(TokenType.For, id);
         if(id == "until") return Put(TokenType.Until, id);
         if(id == "type") return Put(TokenType.Type, id);
+        if(id == "collect") return Put(TokenType.Collect, id);
         if(id == "let") 
         {
             if(PeekPred(Eq('@'))) 

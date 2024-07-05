@@ -13,6 +13,7 @@ public enum TokenType
     Cfn,
     Call,
     Let, LetAlloc,
+    Collect,
     Mut,
     Ret,
     If,

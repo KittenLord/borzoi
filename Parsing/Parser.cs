@@ -315,7 +315,7 @@ public class Parser
     }
 
     private static List<TokenType> StatementKeyTokens = 
-        [ TokenType.Let, TokenType.LetAlloc, TokenType.Call, TokenType.Mut, 
+        [ TokenType.Let, TokenType.LetAlloc, TokenType.Call, TokenType.Mut, TokenType.Collect,
           TokenType.If, TokenType.Ret, TokenType.Do, TokenType.While,
           TokenType.For, TokenType.Continue, TokenType.Break ];
     private static List<TokenType> StatementTokens = LeafTokens.Concat(StatementKeyTokens).ToList();
@@ -353,6 +353,12 @@ public class Parser
             else if(Peek().Is(TokenType.Call))
             {
                 var call = ParseCall(false);
+                if(call is null) { return null; }
+                statements.Add(call);
+            }
+            else if(Peek().Is(TokenType.Collect))
+            {
+                var call = ParseCollect();
                 if(call is null) { return null; }
                 statements.Add(call);
             }
@@ -426,6 +432,19 @@ public class Parser
         if(expr is null) { return null; }
         
         return new LetNode(origin, type, name, expr, alloc);
+    }
+
+    private CollectNode? ParseCollect()
+    {
+        var origin = Pop();
+
+        if(!CanStartLeaf(Peek().Type))
+        { Report(Error.Expected(LeafTokens, Peek())); return null; }
+
+        var expr = ParseExpr();
+        if(expr is null) { return null; }
+
+        return new CollectNode(origin, expr);
     }
 
     private CallNode? ParseCall(bool keepOrigin)

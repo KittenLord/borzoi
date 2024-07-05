@@ -676,6 +676,16 @@ public class Analyzer
                     return false;
                 }
             }
+            else if(line is CollectNode collect)
+            {
+                var type = FigureOutTheTypeOfAExpr(prefix, collect.Expr, VType.Invalid);
+
+                if(!type.Is<VArray>() && !type.Is<VPointer>())
+                {
+                    Report(Error.NotPointerType(type, collect.Origin));
+                    return false;
+                }
+            }
             else if(line is BreakNode || line is ContinueNode)
             {
                 if(!withinLoop)
