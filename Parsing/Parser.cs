@@ -8,12 +8,12 @@ using Borzoi.Parsing.Msg;
 
 public class Parser
 {
-    private Lexer Lexer;
+    private Lexer? Lexer;
     public AST AST { get; set; }
     public List<Message> Errors { get; private set; }
     public bool Success { get; private set; }
 
-    public Parser(Lexer lexer) 
+    public Parser(Lexer? lexer) 
     { 
         Errors = new();
         AST = new();
@@ -29,8 +29,8 @@ public class Parser
          TokenType.Not, TokenType.Minus,
          TokenType.Manual];
 
-    private Token Pop() => Lexer.Pop();
-    private Token Peek() => Lexer.Peek();
+    private Token Pop() => Lexer!.Pop();
+    private Token Peek() => Lexer!.Peek();
 
     private void Report(string error, Token position) => Report(new Message(error, position));
     private void Report(Message error)
@@ -277,6 +277,7 @@ public class Parser
         var type = VType.Void;
         var typeT = (Token?)null;
         if(Peek().Is(TokenType.Id)) { typeT = Peek(); type = ParseType(); }
+        if(type is null) throw new System.Exception("this supposedly shouldnt happen");
 
         var block = ParseBlock(type != VType.Void, true);
         if(block is null) { return null; }
@@ -695,7 +696,7 @@ public class Parser
                         Pop();
 
                         if(firstExpr is not Var cvarn || cvarn.Accessors.Count > 0)
-                        { throw new System.Exception("todo error"); return null; }
+                        { throw new System.Exception("todo error"); /*return null;*/ }
 
                         if(!CanStartLeaf(Peek().Type))
                         { Report(Error.Expected(LeafTokens, Peek())); return null; }

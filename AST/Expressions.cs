@@ -5,19 +5,20 @@ namespace Borzoi.ASTn;
 
 public interface IExpr 
 {
-    public VType Type { get; set; }
+    public VType? Type { get; set; }
+    public string ToString();
 }
 
 public class Var : IExpr
 {
     public string Name;
     public string WorkingName;
-    public VType Type { get; set; }
+    public VType? Type { get; set; }
     public Token Origin;
 
     public List<IAccessor> Accessors = new();
 
-    public Var(Token origin, string name, string wname = null, VType type = null)
+    public Var(Token origin, string name, string wname = "", VType? type = null)
     {
         Origin = origin;
         Name = name;
@@ -81,7 +82,7 @@ public class PointerAcc : IAccessor
 
 public class IntLit : IExpr
 {
-    public VType Type { get; set; } = VType.Int;
+    public VType? Type { get; set; } = VType.Int;
     public Token Value;
     public IntLit(Token value) { Value = value; }
 
@@ -91,7 +92,7 @@ public class IntLit : IExpr
 public class ConstructorLit : IExpr
 {
     public Token Origin;
-    public VType Type { get; set; }
+    public VType? Type { get; set; }
     public List<(string? Name, IExpr Expr)> Arguments;
 
     public ConstructorLit(Token origin, VType type, List<(string? Name, IExpr Expr)> arguments)
@@ -101,12 +102,12 @@ public class ConstructorLit : IExpr
         Arguments = arguments;
     }
 
-    public override string ToString() { return $"{{\n{string.Join("\n", Arguments.Select(arg => $"{(arg.Name ?? "?")}\n{arg.Expr.ToString().Indent()}")).Indent()}\n}}"; }
+    public override string ToString() { return $"{{\n{string.Join("\n", Arguments.Select(arg => $"{(arg.Name ?? "?")}\n{(arg.Expr.ToString() ?? "").Indent()}")).Indent()}\n}}"; }
 }
 
 public class NullLit : IExpr
 {
-    public VType Type { get; set; }
+    public VType? Type { get; set; }
     public NullLit() {}
 
     public override string ToString() { return $"NULL"; }
@@ -114,7 +115,7 @@ public class NullLit : IExpr
 
 public class BoolLit : IExpr
 {
-    public VType Type { get; set; } = VType.Bool;
+    public VType? Type { get; set; } = VType.Bool;
     public bool Value;
     public BoolLit(bool value) { Value = value; }
 
@@ -123,7 +124,7 @@ public class BoolLit : IExpr
 
 public class StrLit : IExpr
 {
-    public VType Type { get; set; } = VType.Byte.Modify(VTypeMod.Arr());
+    public VType? Type { get; set; } = VType.Byte.Modify(VTypeMod.Arr());
     public string Value;
     public StrLit(string value) { Value = value; }
 
@@ -160,7 +161,7 @@ public class PointerOp : IExpr
 
 public class ConvertNode : IExpr
 {
-    public VType Type { get; set; }
+    public VType? Type { get; set; }
     public Token Origin;
     public IExpr Expr;
 
@@ -200,7 +201,7 @@ public class MinusOp : IExpr
 
 public class BinopNode : IExpr
 {
-    public VType Type { get; set; }
+    public VType? Type { get; set; }
     public Token Operator;
     public IExpr Left;
     public IExpr Right;
@@ -213,6 +214,11 @@ public class BinopNode : IExpr
         Left = lhs;
         Right = rhs;
         Operator = op;
+
+        // NOTE: this might break stuff
+        LeftType = VType.Void;
+        RightType = VType.Void;
+        Type = VType.Void;
     }
 
     public override string ToString() { return $"{Operator.Value}\n{Left.ToString().Indent()}\n{Right.ToString().Indent()}"; }

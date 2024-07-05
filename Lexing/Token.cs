@@ -17,7 +17,7 @@ public class Token
     public float FloatValue; 
 
     public bool BoolValue;
-    public string StringValue;
+    public string StringValue = "";
 
     public int Line { get; private set; }
     public int Char { get; private set; }

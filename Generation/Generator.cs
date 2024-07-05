@@ -235,7 +235,7 @@ public class Generator
                 var vari = fn.VarsInternal[i];
                 var info = vari.Type.GetInfo(AST.TypeInfos);
 
-                offset = offset.Pad(info.Alignment);
+                offset = offset.Pad(info!.Alignment);
                 offset += info.ByteSize;
 
                 vari.Offset = offset;
@@ -250,7 +250,7 @@ public class Generator
                 var arg = fn.ArgsInternal[i];
                 var info = arg.Type.GetInfo(AST.TypeInfos);
 
-                offset = offset.Pad(info.Alignment);
+                offset = offset.Pad(info!.Alignment);
                 // while(offset % info.Alignment != 0) offset++;
                 arg.Offset = offset;
 
@@ -323,7 +323,7 @@ public class Generator
                 {
                     fnCode += $"lea rsi, [rsp]\n"; // source
                     fnCode += $"lea rdi, [rbp-{vari.Offset}]\n"; // destination
-                    fnCode += $"mov rcx, {info.ByteSize}\n"; // length
+                    fnCode += $"mov rcx, {info!.ByteSize}\n"; // length
                     fnCode += $"rep movsb\n"; // pretty much memcpy
                     fnCode += $"add rsp, {info.ByteSize.Pad(16)}\n";
                 }
@@ -334,7 +334,7 @@ public class Generator
                     var allocInfo = allocType.GetInfo(AST.TypeInfos);
 
                     fnCode += $"mov rdi, 1\nmov rcx, 1\n";
-                    fnCode += $"mov rsi, {allocInfo.ByteSize}\n";
+                    fnCode += $"mov rsi, {allocInfo!.ByteSize}\n";
                     fnCode += $"mov rdx, {allocInfo.ByteSize}\n";
                     fnCode += "sub rsp, 32\ncall calloc\nadd rsp, 32\n";
                     fnCode += $"mov rdi, rax\nmov rsi, rsp\nmov rcx, {allocInfo.ByteSize}\n";
@@ -347,12 +347,12 @@ public class Generator
             else if(line is CallNode call)
             {
                 fnCode += GenerateExpr(fn, call.Expr);
-                fnCode += $"add rsp, {call.Expr.Type.GetInfo(AST.TypeInfos).ByteSize.Pad(16)}\n";
+                fnCode += $"add rsp, {call.Expr.Type!.GetInfo(AST.TypeInfos)!.ByteSize.Pad(16)}\n";
             }
             else if(line is MutNode mut)
             {
                 // System.Console.WriteLine($"{mut.Expr.Type}");
-                var size = mut.Expr.Type.GetInfo(AST.TypeInfos).ByteSize;
+                var size = mut.Expr.Type!.GetInfo(AST.TypeInfos)!.ByteSize;
 
                 fnCode += GenerateExpr(fn, mut.Expr);
                 fnCode += GenerateExprAddress(fn, mut.Var);
@@ -373,10 +373,10 @@ public class Generator
                         Settings.Bytes + Settings.Bytes + 
                         fn.ArgsSize + fn.ArgsPadSize;
 
-                    fnCode += GenerateExpr(fn, ret.Expr);
+                    fnCode += GenerateExpr(fn, ret.Expr!);
                     fnCode += $"lea rdi, [rbp+{returnAddress}]\n";
                     fnCode += "lea rsi, [rsp]\n";
-                    fnCode += $"mov rcx, {fn.RetType.GetInfo(AST.TypeInfos).ByteSize}\n";
+                    fnCode += $"mov rcx, {fn.RetType.GetInfo(AST.TypeInfos)!.ByteSize}\n";
                     fnCode += "rep movsb\n";
                 }
 
@@ -506,7 +506,7 @@ public class Generator
             
                 // Holy polymorphism
                 string ax, bx, cx, dx, ce;
-                if(ltype == VType.Int) { ax = "rax"; bx = "rbx"; cx = "rcx"; dx = "rdx"; ce = "cqo"; }
+                if(ltype == VType.Int) { ax = "rax"; bx = "rbx"; cx = "rcx"; dx = "rdx"; ce = "cqo"; _ = cx; }
                 else if(ltype == VType.I32) { ax = "eax"; bx = "ebx"; cx = "ecx"; dx = "edx"; ce = "cdq"; }
                 else if(ltype == VType.Byte) { ax = "ax"; bx = "bx"; cx = "cx"; dx = "dx"; ce = "cbw"; }
                 else throw new System.Exception("oopsie daizy");
@@ -552,6 +552,7 @@ public class Generator
 
                 var label = GetLabel();
                 string ax = "rax";
+                _ = ax;
                 string add, sub, mul, div, cmp;
 
                 int cmpop = binop.Operator.Type switch {
@@ -578,6 +579,8 @@ public class Generator
                     TokenType.Eq or TokenType.Neq or
                     TokenType.Ls or TokenType.Le or
                     TokenType.Gr or TokenType.Gr => $"{cmp} xmm0, xmm1, {cmpop}\nmovq rax, xmm0\nand rax, 1\nmovq xmm0, rax\n",
+
+                    _ => throw new System.Exception($"Oops, I forgor to implement {binop.Operator.Type} binop")
                 };
 
                 result += "movq [rsp], xmm0\n";
@@ -599,6 +602,7 @@ public class Generator
         else if(expr is IntLit intlit)
         {
             string value = intlit.Value.IntValue.ToString();
+            if(intlit.Type is null) throw new System.Exception("Shouldve been caught when analyzing");
             if(intlit.Type == VType.Double || intlit.Type == VType.Float)
             {
                 // if(intlit.Type == VType.Double)
@@ -627,6 +631,8 @@ public class Generator
             var dType = cvt.Type;
 
             result += GenerateExpr(fn, cvt.Expr);
+            if(oType is null) throw new System.Exception("Shouldve been caught when analyzing");
+            if(dType is null) throw new System.Exception("Shouldve been caught when analyzing");
 
             if(oType == dType) 
             {} // Obv
@@ -744,7 +750,7 @@ public class Generator
                         : sv.Offset;
                     var op = isArg ? "+" : "-";
 
-                    result += $"sub rsp, {info.ByteSize.Pad(16)}\n";
+                    result += $"sub rsp, {info!.ByteSize.Pad(16)}\n";
                     result += $"lea rsi, [rbp{op}{index}]\n";
                     result += $"lea rdi, [rsp]\n";
                     result += $"mov rcx, {info.ByteSize}\n";
@@ -770,7 +776,7 @@ public class Generator
 
                     var retInfo = fnn.RetType.GetInfo(AST.TypeInfos);
 
-                    result += $"sub rsp, {retInfo.ByteSize.Pad(16)}\n";
+                    result += $"sub rsp, {retInfo!.ByteSize.Pad(16)}\n";
                     result += $"sub rsp, {fnn.ArgsPadSize + fnn.ArgsSize}\n";
 
                     var args = new List<IExpr>(func.Args);
@@ -779,10 +785,10 @@ public class Generator
                     {
                         var argExpr = args[i];
                         var offset = fnn.ArgsInternal[i].Offset;
-                        var typeInfo = argExpr.Type.GetInfo(AST.TypeInfos);
+                        var typeInfo = argExpr.Type!.GetInfo(AST.TypeInfos);
 
                         result += GenerateExpr(fn, argExpr);
-                        result += $"lea rdi, [rsp+{offset+typeInfo.ByteSize.Pad(16)}]\n";
+                        result += $"lea rdi, [rsp+{offset+typeInfo!.ByteSize.Pad(16)}]\n";
                         result += $"lea rsi, [rsp]\n";
                         result += $"mov rcx, {typeInfo.ByteSize}\n";
                         result += $"rep movsb\n";
@@ -795,7 +801,7 @@ public class Generator
                 else if((cfn = AST.CFndefs.Find(cf => cf.Name == varl.Name)) is not null)
                 {
                     var retTypeInfo = cfn.RetType.GetInfo(AST.TypeInfos);
-                    result += $"sub rsp, {retTypeInfo.ByteSize.Pad(16)}\n";
+                    result += $"sub rsp, {retTypeInfo!.ByteSize.Pad(16)}\n";
 
                     if(Windows)
                     {
@@ -816,8 +822,8 @@ public class Generator
                         for(int i = func.Args.Count - 1; i >= 0; i--)
                         {
                             var argExpr = func.Args[i];
-                            var argInfo = argExpr.Type.GetInfo(AST.TypeInfos);
-                            offsets.Enqueue(argInfo.ByteSize.Pad(16));
+                            var argInfo = argExpr.Type!.GetInfo(AST.TypeInfos);
+                            offsets.Enqueue(argInfo!.ByteSize.Pad(16));
                             restoreStack += argInfo.ByteSize.Pad(16);
                             result += GenerateExpr(fn, argExpr);
                         }
@@ -832,7 +838,7 @@ public class Generator
                             for(int i = 0; i < func.Args.Count + retOffset; i++)
                             {
                                 if(i + retOffset < 4) continue;
-                                var ft = func.Args[i].Type == VType.Double || func.Args[i].Type == VType.Float;
+                                var ft = func.Args[i].Type! == VType.Double || func.Args[i].Type! == VType.Float;
 
                                 // if(ft && reserve == reserve.Pad(16))
                                 //     reserve += Settings.Bytes * 2;
@@ -853,14 +859,14 @@ public class Generator
                         {
                             var varargs = cfn.Args.Last()!.Type! == VType.VARARGS && i >= cfn.Args.Count - 1;
                             var offset = offsets.Sum() + extraOffset;
-                            var argInfo = func.Args[i].Type.GetInfo(AST.TypeInfos);
+                            var argInfo = func.Args[i].Type!.GetInfo(AST.TypeInfos);
 
                             // System.Console.WriteLine($"FN CALL {cfn.Name} {func.Args[i].Type} {argInfo}");
 
-                            var byPointer = !nonPointerSizes.Contains(argInfo.ByteSize);
-                            if(func.Args[i].Type.Is<VArray>()) byPointer = false;
+                            var byPointer = !nonPointerSizes.Contains(argInfo!.ByteSize);
+                            if(func.Args[i].Type!.Is<VArray>()) byPointer = false;
                             var op = byPointer ? "lea" : "mov";
-                            var ft = func.Args[i].Type == VType.Double || func.Args[i].Type == VType.Float;
+                            var ft = func.Args[i].Type! == VType.Double || func.Args[i].Type! == VType.Float;
 
                             if (ft && varargs && i + retOffset <= 3)
                             {
@@ -868,7 +874,8 @@ public class Generator
                                     0 => "rcx",
                                     1 => "rdx",
                                     2 => "r8",
-                                    3 => "r9"
+                                    3 => "r9",
+                                    _ => throw new System.Exception("This path is unreachable :clueless:")
                                 };
 
                                 result += $"mov {reg}, [rsp+{offset}]\n";
@@ -944,7 +951,7 @@ public class Generator
 
                     result += $"pop rax\n";
                     result += "add rsp, 8\n";
-                    result += $"sub rsp, {info.ByteSize.Pad(16)}\n";
+                    result += $"sub rsp, {info!.ByteSize.Pad(16)}\n";
                     result += $"lea rsi, [rax]\n";
                     result += $"lea rdi, [rsp]\n";
                     result += $"mov rcx, {info.ByteSize}\n";
@@ -983,7 +990,7 @@ public class Generator
 
                     // System.Console.WriteLine($"{type} {info.ByteSize}");
 
-                    result += $"mov rcx, {info.ByteSize}\n";
+                    result += $"mov rcx, {info!.ByteSize}\n";
                     result += $"mul rcx\n";
                     result += $"lea rsi, [rax+rbx]\n";
                     result += $"sub rsp, {info.ByteSize.Pad(16)}\n";
@@ -996,11 +1003,11 @@ public class Generator
                     // System.Console.WriteLine($"{type}");
                     // System.Console.WriteLine($"{tinfo}");
 
-                    var member = tinfo.Members.Find(m => m.Name == mAcc.Member);
+                    var member = tinfo!.Members.Find(m => m.Name == mAcc.Member);
                     type = member.Type;
 
                     var minfo = member.Type.GetInfo(AST.TypeInfos);
-                    var msize = minfo.ByteSize.Pad(16);
+                    var msize = minfo!.ByteSize.Pad(16);
                     var tsize = tinfo.ByteSize.Pad(16);
                     result += $"lea rsi, [rsp+{member.Offset}]\n";
                     result += $"sub rsp, {msize}\n";
@@ -1026,7 +1033,7 @@ public class Generator
         {
             // This is guaranteed by the parser
             // After parsing @ unary operator, only accepted next symbol is Id
-            result += GenerateExprAddress(fn, ptr.Expr as Var);
+            result += GenerateExprAddress(fn, (ptr.Expr as Var)!);
             result += $"sub rsp, 16\nmov [rsp], rax\n";
         }
         else if(expr is ArrayLit arr)
@@ -1038,7 +1045,7 @@ public class Generator
             result += $"sub rsp, 16\n";
             result += $"mov QWORD [rsp+8], {arr.Elems.Count}\n";
             result += $"mov {(Windows ? "rcx" : "rdi")}, {arr.Elems.Count+1}\n";
-            result += $"mov {(Windows ? "rdx" : "rsi")}, {info.ByteSize}\n";
+            result += $"mov {(Windows ? "rdx" : "rsi")}, {info!.ByteSize}\n";
             result += "sub rsp, 32\n";
             result += $"call calloc\n";
             result += "add rsp, 32\n";
@@ -1064,18 +1071,18 @@ public class Generator
         else if(expr is ConstructorLit ctor)
         {
             var type = ctor.Type;
-            var info = type.GetInfo(AST.TypeInfos);
-            var size = info.ByteSize.Pad(16);
+            var info = type!.GetInfo(AST.TypeInfos);
+            var size = info!.ByteSize.Pad(16);
 
             // System.Console.WriteLine($"{type}");
             // System.Console.WriteLine($"{info}");
             // System.Console.WriteLine($"{size}");
 
-            var stackFrame = info.Members.Sum(m => m.Type.GetInfo(AST.TypeInfos).ByteSize.Pad(16));
+            var stackFrame = info.Members.Sum(m => m.Type.GetInfo(AST.TypeInfos)!.ByteSize.Pad(16));
             Queue<int> offsets = new();
             foreach(var arg in ctor.Arguments)
             {
-                offsets.Enqueue(arg.Expr.Type.GetInfo(AST.TypeInfos).ByteSize.Pad(16));
+                offsets.Enqueue(arg.Expr.Type!.GetInfo(AST.TypeInfos)!.ByteSize.Pad(16));
                 result += GenerateExpr(fn, arg.Expr);
             }
             if(offsets.Count > 0) offsets.Dequeue();
@@ -1087,7 +1094,7 @@ public class Generator
                 var offset = offsets.Sum() + size;
                 result += $"lea rdi, [rsp+{member.Offset}]\n";
                 result += $"lea rsi, [rsp+{offset}]\n";
-                result += $"mov rcx, {member.Type.GetInfo(AST.TypeInfos).ByteSize}\n";
+                result += $"mov rcx, {member.Type.GetInfo(AST.TypeInfos)!.ByteSize}\n";
                 result += "rep movsb\n";
                 if(offsets.Count > 0) offsets.Dequeue();
             }
@@ -1112,7 +1119,7 @@ public class Generator
             result += $"mov QWORD [rsp+8], rax\n";
             result += "add rax, 8\n"; // guaranteed null terminator
             result += $"mov {(Windows ? "rcx" : "rdi")}, rax\n";
-            result += $"mov {(Windows ? "rdx" : "rsi")}, {info.ByteSize}\n";
+            result += $"mov {(Windows ? "rdx" : "rsi")}, {info!.ByteSize}\n";
             result += "sub rsp, 32\n";
             result += $"call calloc\n";
             result += "add rsp, 32\n";
@@ -1159,7 +1166,7 @@ public class Generator
                 result += "push rax\npush 0\n";
                 result += GenerateExpr(fn, arrAcc.Index);
                 result += "pop rax\n";
-                result += $"mov rcx, {info.ByteSize}\n";
+                result += $"mov rcx, {info!.ByteSize}\n";
                 result += $"mul rcx\n";
                 result += $"add rsp, 16\n";
                 result += "pop rbx\n";
@@ -1169,7 +1176,7 @@ public class Generator
             else if(accessor is MemberAcc mAcc)
             {
                 var info = type.GetInfo(AST.TypeInfos);
-                var member = info.Members.Find(m => m.Name == mAcc.Member);
+                var member = info!.Members.Find(m => m.Name == mAcc.Member);
                 result += $"add rax, {member.Offset}\n";
             }
             else throw new System.Exception("SHIIIT");

@@ -6,14 +6,14 @@ namespace Borzoi.CLI;
 
 public class ArgValue<T>
 {
-    public T Value = default;
+    public T? Value = default;
     public bool HasValue = false;
 
     public void Set(T value) { Value = value; HasValue = true; }
-    public T Get() => Value;
-    public T Get(T defaultValue) => HasValue ? Value : defaultValue;
+    public T? Get() => Value;
+    public T Get(T defaultValue) => (HasValue && Value is not null) ? Value : defaultValue;
 
-    public ArgValue(T value = default) { Value = value; }
+    public ArgValue(T? value = default) { Value = value; }
     public override string? ToString() { return Value?.ToString(); }
 }
 
@@ -28,10 +28,10 @@ public class ArgumentParser
         public int Position = 0;
         public bool Tail = false;
 
-        public object Reference;
-        public Func<List<string>, object?> Parser = default;
+        public object? Reference;
+        public Func<List<string>, object?> Parser = (_) => null;
 
-        public Func<Stack<string>, Argument, bool> Handler = default;
+        public Func<Stack<string>, Argument, bool> Handler = (_, _) => true;
 
         public string Description = "";
         public string AllowedValues = "";
@@ -45,12 +45,12 @@ public class ArgumentParser
     public IReadOnlyList<Argument> PositionalArguments => PositionalArgumentDefinitions;
 
     private bool HandleSingleArgument<T>(Stack<string> args, Argument argument)
-        => HandleArgument<T>(args, argument, (reference, value) => ((ArgValue<T>)reference).Set(value));
+        => HandleArgument<T>(args, argument, (reference, value) => ((ArgValue<T>?)reference)?.Set(value));
 
     private bool HandleListArgument<T>(Stack<string> args, Argument argument)
-        => HandleArgument<T>(args, argument, (reference, value) => ((List<T>)reference).Add(value));
+        => HandleArgument<T>(args, argument, (reference, value) => ((List<T>?)reference)?.Add(value));
 
-    private bool HandleArgument<T>(Stack<string> args, Argument argument, Action<object, T> action)
+    private bool HandleArgument<T>(Stack<string> args, Argument argument, Action<object?, T> action)
     {
         var list = new List<string>();
         for(int i = 0; i < argument.Span; i++)

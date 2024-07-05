@@ -325,6 +325,7 @@ public class Lexer
         var result = long.TryParse(nums.str(), out var i);
         var itoken = Put(TokenType.IntLit, nums.str());
 
+
         itoken.IntValue = i;
         itoken.FloatValue = (float)i;
         itoken.DoubleValue = (double)i;

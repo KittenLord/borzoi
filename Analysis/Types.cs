@@ -69,6 +69,7 @@ public class TypeInfo
 }
 
 // FUCK Equals() and GetHashCode(), all my homies FUCKING HATE Equals() and GetHashCode()
+#pragma warning disable 0661, 0659
 public class VType
 {
     public static VType Int => new("int");
@@ -90,7 +91,7 @@ public class VType
     public string Name;
     public List<VTypeMod> Mods;
 
-    public TypeInfo GetInfo(Dictionary<string, TypeInfo> source)
+    public TypeInfo? GetInfo(Dictionary<string, TypeInfo> source)
     {
         if(this.Is<VPointer>()) return TypeInfo.Pointer;
         if(this.Is<VArray>()) return TypeInfo.Array;
@@ -121,13 +122,14 @@ public class VType
     public override string ToString() { return (Name == "" ? "void" : Name) + string.Join("", Mods.Select(mod => mod switch { 
                 VFunc fn => $"({string.Join(", ", fn.Args)})", 
                 VArray arr => $"[{(arr.Fixed ? arr.Size.ToString() : "")}]",
-                VPointer ptr => $"@"})); }
+                VPointer ptr => $"@",
+                _ => throw new System.Exception("forgor") })); }
 
     public bool Is<T>() where T : VTypeMod => Mods.Count > 0 && Mods.Last() is T;
-    public bool Is<T>(out T mod) where T : VTypeMod 
+    public bool Is<T>(out T? mod) where T : VTypeMod 
     { 
         var m = Mods.LastOrDefault();
-        if(m is null || m is T) mod = (T)m;
+        if(m is null || m is T) mod = (T?)m;
         else mod = default;
         return Mods.Count > 0 && Mods.Last() is T; 
     }

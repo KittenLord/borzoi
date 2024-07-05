@@ -107,6 +107,8 @@ public class LetNode : IStatement
         NameT = name;
         Expr = expr;
         Alloc = alloc;
+        // NOTE: Might break stuff idk
+        Var = new Var(origin, "");
     }
 
     public override string ToString() { return $"LET{(Alloc ? " ALLOC" : "")} {Name} :: {Type}\n{Expr.ToString()?.Indent()}"; }
@@ -138,7 +140,7 @@ public class ReturnNode : IStatement
     public Token Origin;
 
     public bool Nothing;
-    public IExpr Expr;
+    public IExpr? Expr;
     public ReturnNode(Token o) { Origin = o; Nothing = true; Expr = null; }
     public ReturnNode(Token o, IExpr expr) { Origin = o; Nothing = false; Expr = expr; }
 

@@ -177,7 +177,7 @@ public class Program
         var argParser = new ArgumentParser();
         var build = BuildArguments(argParser);
 
-        ArgValue<bool> exitCode = null;
+        ArgValue<bool>? exitCode = null;
         if(run)
         {
             exitCode = argParser.FlagArgument(["--exit-code"], new());

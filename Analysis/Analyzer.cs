@@ -1,7 +1,6 @@
 using System.Linq;
 using System.Collections.Generic;
 using Borzoi.ASTn;
-using System.Collections.Generic;
 
 using Borzoi.Analysis.Msg;
 namespace Borzoi.Analysis;
@@ -39,7 +38,7 @@ public class Analyzer
         {
             // TODO: Err
             throw new System.Exception("AAAAAA");
-            return;
+            // return;
         }
 
         Types.Add(vtype);
@@ -67,14 +66,16 @@ public class Analyzer
 
     private bool TypeExists(string name, out VType type)
     {
-        type = Types.Find(t => t.Name == name);
-        return type is not null;
+        var t = Types.Find(t => t.Name == name);
+        type = t ?? VType.Void;
+        return t is not null;
     }
 
     private bool WIdExists(string wn, out Token original)
     {
-        original = Identifiers.Find(i => i.WorkingName == wn)?.Definition;
-        return original is not null;
+        var id = Identifiers.Find(i => i.WorkingName == wn)?.Definition;
+        original = id ?? Token.Pos(0,0);
+        return id is not null;
     }
 
     private static readonly List<(VType original, VType converted)> AllowedConversions = new(){
@@ -295,6 +296,7 @@ public class Analyzer
                         Report(Error.CantAccess(type, accessor));
                         return VType.Invalid;
                     }
+                    if(funcProto is null) throw new System.Exception("Shouldnt happen");
 
                     var isVarArg = funcProto.Args.Count > 0 &&
                                    funcProto.Args.Last() == VType.VARARGS;
@@ -358,6 +360,7 @@ public class Analyzer
                 else if(accessor is MemberAcc mAcc)
                 {
                     var info = type.GetInfo(TypeInfos);
+                    if(info is null) throw new System.Exception("bad");
                     var member = info.Members.Find(m => m.Name == mAcc.Member);
 
                     if(!info.Members.Any(m => m.Name == mAcc.Member))
@@ -393,6 +396,7 @@ public class Analyzer
         if(expr is StrLit) return VType.Byte.Modify(VTypeMod.Arr());
         if(expr is ConvertNode cvt) 
         {
+            if(cvt.Type is null) throw new System.Exception("bad");
             if(!TypeExists(cvt.Type.Name, out _))
             {
                 Report(Error.UnknownType(cvt.Type.Name, cvt.Origin));
@@ -544,6 +548,7 @@ public class Analyzer
         }
         if(expr is ConstructorLit ctor)
         {
+            if(ctor.Type is null) throw new System.Exception("bad");
             if(!TypeExists(ctor.Type.Name, out var type))
             {
                 Report(Error.UnknownType(ctor.Type.Name, ctor.Origin));
@@ -551,6 +556,7 @@ public class Analyzer
             }
 
             var info = type.GetInfo(TypeInfos);
+            if(info is null) throw new System.Exception("bad");
 
             var sameFormat = ctor.Arguments.Count <= 0 ||
                 ctor.Arguments.All(arg => 
@@ -603,7 +609,7 @@ public class Analyzer
             return ctor.Type;
         }
         throw new System.Exception("dunno");
-        return VType.Invalid;
+        // return VType.Invalid;
     }
 
     private bool FigureOutTypesAndStuffForABlock(IContainer container, FndefNode fn, string prefix, bool withinLoop)
@@ -749,6 +755,7 @@ public class Analyzer
 
                 if(!ret.Nothing)
                 {
+                    if(ret.Expr is null) throw new System.Exception("bad");
                     var exprType = FigureOutTheTypeOfAExpr(prefix, ret.Expr, fn.RetType);
                     if(!exprType.Valid) return false;
                     if(exprType != fn.RetType)
@@ -795,7 +802,7 @@ public class Analyzer
                 if(!typedef.Members.All(member => TypeExists(member.Type.Name, out _)))
                 { continue; }
 
-                var alignment = typedef.Members.Max(m => m.Type.GetInfo(TypeInfos).Alignment);
+                var alignment = typedef.Members.Max(m => m.Type.GetInfo(TypeInfos)!.Alignment);
 
                 var vtype = new VType(typedef.Name);
 
@@ -806,7 +813,7 @@ public class Analyzer
                 {
                     var minfo = member.Type.GetInfo(TypeInfos);
 
-                    offset = offset.Pad(minfo.Alignment);
+                    offset = offset.Pad(minfo!.Alignment);
                     typeinfo.Members.Add((member.Name, member.Type, offset));
                     offset += minfo.ByteSize;
                 }
