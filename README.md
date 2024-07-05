@@ -293,6 +293,8 @@ What I want to do next
 
 ## Installation
 
+I'm not sure if it even works on Linux, will test and add support later
+
 You need to have NASM and GCC (MINGW64) installed!
 NASM - https://www.nasm.us/pub/nasm/releasebuilds/2.16.03/
 MINGW64 (Windows) - https://code.visualstudio.com/docs/cpp/config-mingw
