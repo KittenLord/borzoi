@@ -153,7 +153,8 @@ public class Program
         ArgValue<bool?> PlatformWindows,
         ArgValue<bool> Rawdog,
         ArgValue<bool> DisplayParser,
-        ArgValue<bool> DisplayLexer)
+        ArgValue<bool> DisplayLexer,
+        ArgValue<bool> Stats)
     BuildArguments(ArgumentParser parser)
     {
         return (
@@ -166,12 +167,15 @@ public class Program
                 { "win" or "win64" => true, "linux" or "lin" or "linux64" or "lin64" => false, _ => null }, description: "Target platform", allowedValues: "win, linux"),
             parser.FlagArgument(["--rawdog"], new(), description: "Disable the borzoi compiler, only rebuild the nasm file, in case you need to rawdog assembly"),
             parser.FlagArgument(["--display-parser", "-parser"], new(), description: "Display the output of the parsing step"),
-            parser.FlagArgument(["--display-lexer", "-lexer"], new(), description: "Display the output of the lexing step")
+            parser.FlagArgument(["--display-lexer", "-lexer"], new(), description: "Display the output of the lexing step"),
+            parser.FlagArgument(["--stats", "-s"], new(), description: "Display compilation stats")
         );
     }
     
     private static Result BorzoiBuild(Stack<string> args, bool run)
     {
+        DateTime reference = DateTime.Now;
+
         args.Pop();
 
         var argParser = new ArgumentParser();
@@ -185,6 +189,7 @@ public class Program
 
         var filePaths = build.FilePaths;
         var libSearchPaths = build.LibSearchPaths;
+        var displayStats = build.Stats;
 
         argParser.Parse(args);
 
@@ -226,18 +231,31 @@ public class Program
 
         var compilerResult = GenerateNasm(files, platformWindows, build.DisplayParser.Get(false), build.DisplayLexer.Get(false));
 
+
 if(build.Rawdog.Get(false)) goto rawdog;
         if(compilerResult.result.Error) return compilerResult.result;
         File.WriteAllText(outputNasmPath, compilerResult.data!.Nasm);
 rawdog:
 
+        DateTime linkReference = DateTime.Now;
         var buildResult = BuildExecutable(
                 outputNasmPath, outputObjPath, outputPath, 
                 platformWindows, 
                 compilerResult.data!.Links, libSearchPaths);
         if(buildResult.Error) return buildResult;
+        compilerResult.data.LinkingTime = DateTime.Now - linkReference;
 
         Console.WriteLine("Build was successful!");
+
+        compilerResult.data.TotalTime = DateTime.Now - reference;
+        if(displayStats.Get(false))
+        {
+            Console.WriteLine($"Parsing time: {compilerResult.data.ParsingTime}");
+            Console.WriteLine($"Analyzing time: {compilerResult.data.AnalyzingTime}");
+            Console.WriteLine($"Generating time: {compilerResult.data.GeneratingTime}");
+            Console.WriteLine($"Linking time: {compilerResult.data.LinkingTime}");
+            Console.WriteLine($"Total time: {compilerResult.data.TotalTime}");
+        }
 
         if(run)
         {
@@ -257,9 +275,11 @@ rawdog:
         return new();
     }
 
-    private class CompileData { public string Nasm = ""; public List<string> Links = new(); }
+    private class CompileData { public string Nasm = ""; public List<string> Links = new();
+        public TimeSpan ParsingTime; public TimeSpan AnalyzingTime; public TimeSpan GeneratingTime; public TimeSpan LinkingTime; public TimeSpan TotalTime; }
     private static (Result result, CompileData? data) GenerateNasm(List<string> files, bool platformWindows, bool displayParser, bool displayLexer)
     {
+        DateTime reference = DateTime.Now;
         var parser = new Parser(null);
 
         foreach(var file in files)
@@ -278,11 +298,16 @@ rawdog:
 
             if(!lexer.Success || !parser.Success) return (new("A big fucky wucky happened while parsing"), null);
         }
+        var parsingTime = DateTime.Now - reference;
+        reference = DateTime.Now;
 
         if(displayParser) Console.WriteLine(parser.AST);
 
         var analyzer = new Analyzer(parser.AST);
         analyzer.Analyze();
+
+        var analyzingTime = DateTime.Now - reference;
+        reference = DateTime.Now;
 
         foreach(var err in analyzer.Errors) Console.WriteLine($"\n\n{err}");
         if(!analyzer.Success) return (new("A big fucky wucky happened while analyzing"), null);
@@ -290,7 +315,9 @@ rawdog:
         var generator = new Generator(analyzer.AST, platformWindows, true);
         var nasm = generator.Generate();
 
-        return (new(), new CompileData{ Links = parser.AST.Links, Nasm = nasm });
+        var generatingTime = DateTime.Now - reference;
+
+        return (new(), new CompileData{ Links = parser.AST.Links, Nasm = nasm, ParsingTime = parsingTime, AnalyzingTime = analyzingTime, GeneratingTime = generatingTime });
     }
 
     private static Result BuildExecutable(string outputNasmPath, string outputObjPath, string outputPath, bool platformWindows, List<string> links, List<string> libSearchPaths)
