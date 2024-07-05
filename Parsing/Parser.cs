@@ -352,7 +352,7 @@ public class Parser
             }
             else if(Peek().Is(TokenType.Call))
             {
-                var call = ParseCall();
+                var call = ParseCall(false);
                 if(call is null) { return null; }
                 statements.Add(call);
             }
@@ -386,7 +386,13 @@ public class Parser
                 if(@while is null) { return null; }
                 statements.Add(@while);
             }
-            else throw new System.Exception($"{Peek()}");
+            else
+            {
+                var call = ParseCall(true);
+                if(call is null) { return null; }
+                statements.Add(call);
+            }
+            // else throw new System.Exception($"{Peek()}");
 
             if(singleLine) break;
         }
@@ -422,9 +428,9 @@ public class Parser
         return new LetNode(origin, type, name, expr, alloc);
     }
 
-    private CallNode? ParseCall()
+    private CallNode? ParseCall(bool keepOrigin)
     {
-        var origin = Pop();
+        var origin = keepOrigin ? Peek() : Pop();
 
         if(!CanStartLeaf(Peek().Type))
         { Report(Error.Expected(LeafTokens, Peek())); return null; }
