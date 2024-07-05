@@ -22,7 +22,7 @@ Unless you want to goof around of course lol
 
 ## Introduction
 
-*To try out the following examples check the Installation and Usage sections*
+*To try out the following examples yourself check the Installation and Usage sections*
 
 Being a really C inspired language, most of the concepts are probably already 
 familiar to you
@@ -88,9 +88,10 @@ Pretty much all of these are self explanatory, except maybe `mut`, which is used
 a variable (it's easier to parse), and the unusual spelling of `do while`, which is this way
 because it is objectively the best spelling.
 
-You may have noticed that `main` is missing the return type. No return type is equivalent to
+You may have noticed that `main` is missing the return type. Missing return type is equivalent to
 a `void` function, and in Borzoi `main` can return any type you want. The return value is used 
-as the exit code for your program, which can be viewed using the `--exit-code` compiler flag
+as the exit code for your program, which can be viewed by using the `--exit-code` compiler flag
+like this: `borzoi run --exit-code`
 
 Now, after convincing you that this language has some basic features, let me show you more
 interesting examples, which also showcase some interesting stuff
@@ -115,14 +116,15 @@ cfn printf(byte[] fmt, *) int
 First of all, function definition order doesn't matter at all, a feature which all reasonable
 languages should have. But you also may have noticed the weird `&&` and `*` operators.
 
-`*` is a unary operator which creates an array with a runtime defined length. I should also
-mention, that arrays in Borzoi come with runtime bounds checking
+`*` is a unary operator which creates an array with a runtime defined length. Strings in Borzoi
+are aliases for byte arrays, and I should also
+mention that arrays in Borzoi come with runtime bounds checking
 
 `&&` is more complex than that, and to comprehend it we need to check out how the garbage
 collection works
 
 So, because of my skill issues, all arrays (including strings) are heap allocated using `malloc`.
-The thing is, what is `malloc`'ed should be `free`'d, and doing that for every single throwaway
+The thing is, what is `malloc`'ed should be `free`'d, and doing that manually for every single throwaway
 string you create is absurd. In order to make Borzoi usable, whenever you create an array, a
 pointer to it is stored on the secondary stack, and when you exit the frame, all the arrays in
 that frame get `free`'d
@@ -247,14 +249,14 @@ embed "assets/image.png" as sprite # embed files into the executable (accessible
 embed "text.txt" as text # can be any file type
 fn main() {
     let int[] a = [1, 2, 3, 4] 
-        # Array literals look pretty (unlike C#'s "new int[] {1, 2, 3}" [I know they added it recently, it's still bad])
+        # Array literals look pretty (unlike C#'s "new int[] {1, 2, 3}" [I know they improved it recently, it's still bad])
 
     let int[4] b = [1, 2, 3, 4] # Compile-time sized array type
     let int[4] b1 = [] # Can be left uninitialized
     # let int[4] bb = [1, 2, 3] # A compile-time error
 
     let int num = 5
-    let byte by = num->byte # Pretty cast syntax, will help you when type inference inevitably fails you
+    let byte by = num->byte # Pretty cast syntax, will help when type inference inevitably fails you
     let float fl = num->float # Actual conversion occurs
     mut fl = 6.9 # Also floats do exist, yea
 
