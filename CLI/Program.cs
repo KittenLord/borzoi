@@ -219,6 +219,7 @@ public class Program
         string outputPath = build.OutputPath.Get(Path.ChangeExtension(filePaths.First(), platformWindows ? "exe" : ""));
         string outputObjPath = build.OutputObjPath.Get(Path.ChangeExtension(outputPath, "o"));
         string outputNasmPath = build.OutputNasmPath.Get(Path.ChangeExtension(outputPath, "S"));
+        if(outputPath.EndsWith(".")) outputPath = outputPath.Substring(0, outputPath.Length - 1);
 
 
         var files = new List<string>();
@@ -247,6 +248,7 @@ rawdog:
         if(buildResult.Error) return buildResult;
         compilerResult.data.LinkingTime = DateTime.Now - linkReference;
 
+        // FIX: gcc non-zero exit code doesn't get detected???
         Console.WriteLine("Build was successful!");
 
         compilerResult.data.TotalTime = DateTime.Now - reference;
@@ -360,6 +362,8 @@ rawdog:
         AddGccArgument(libSearchPathsArg);
         AddGccArgument(linksArg);
         AddGccArgument($"-o {outputPath}");
+
+        AddGccArgument("-fPIE");
 
         // string entry = platformWindows ? "main" : "_start";
         // gccProcess.StartInfo.Arguments += " " + "--entry=_start";

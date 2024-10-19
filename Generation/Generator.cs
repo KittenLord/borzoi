@@ -8,6 +8,8 @@ namespace Borzoi.Generation;
 
 public class Generator
 {
+    private static string wrt = " WRT ..plt";
+
 
     private AST AST;
     private bool Windows;
@@ -41,6 +43,7 @@ public class Generator
     {
         AST = ast;
         Windows = windows;
+        if(Windows) wrt = "";
         Optimize = optimize;
         LastString = 0;
         StringData = "";
@@ -53,6 +56,8 @@ public class Generator
             [ "malloc", "realloc", "calloc", "free", "printf" ];
         if(Windows) externFunctions.AddRange(
             [ "ExitProcess", "signal" ]);
+        else externFunctions.AddRange(
+            [ "sigaction" ]);
 
         foreach(var cfn in AST.CFndefs)
         {
@@ -61,7 +66,7 @@ public class Generator
         }
 
         // I fucking hate windows
-        string entry = Windows ? "main" : "_start";
+        string entry = Windows ? "main" : "main";
 
         string result = 
         "BITS 64\n" +
@@ -87,12 +92,13 @@ public class Generator
         "sub rsp, 32\n" +
 
         $"mov {(Windows ? "rcx" : "rdi")}, { Settings.GCStackSize * Settings.Bytes }\n" +
-        "call malloc\n" +
+        $"call malloc{wrt}\n" +
         "mov [rel gcptr@@], rax\n" +
 
-        "mov rcx, 11\n" +
-        "mov rdx, handler@@sigsegv\n" +
-        "call signal\n" +
+        $"mov {(Windows ? "rcx" : "rdi")}, 11\n" +
+        $"mov {(Windows ? "rdx" : "rsi")}, handler@@sigsegv\n" +
+        (Windows ? "" : "mov rdx, 0\n") +
+        $"call {(Windows ? "signal" : "sigaction")}{wrt}\n" +
 
         "sub rsp, 32\n" +
         "mov QWORD [rsp], 0\nmov QWORD [rsp+8], 0\n mov QWORD [rsp+16], 0\nmov QWORD [rsp+24], 0\n" +
@@ -107,7 +113,7 @@ public class Generator
         "error@@:\n" +
         "push rbp\n" +
         "sub rsp, 32\n" +
-        "call printf\n" +
+        $"call printf{wrt}\n" +
         $"{(Windows ? "mov rcx, -1\ncall ExitProcess\n" : "")}" +
         "mov rbx, 1\n" +
         "mov rax, 0\n" +
@@ -115,7 +121,7 @@ public class Generator
 
         "handler@@sigsegv:\n" +
         "push rbp\n" +
-        "mov rcx, error@@SEGFAULT\n" +
+        $"mov {(Windows ? "rcx" : "rdi")}, error@@SEGFAULT\n" +
         "call error@@\n" +
 
 
@@ -141,7 +147,7 @@ public class Generator
         $"mov rbx, {Settings.Bytes}\n" +
         "mul rax\n" +
         $"mov {(Windows ? "rdx" : "rsi")}, rax\n" +
-        "call realloc\n" +
+        $"call realloc{wrt}\n" +
         "mov [rel gcptr@@], rax\n" +
         "add rsp, 32\n" +
 
@@ -199,7 +205,7 @@ public class Generator
         "mov r12, rdi\n" +
 
         "sub rsp, 32\n" +
-        "call free\n" +
+        $"call free{wrt}\n" +
         "add rsp, 32\n" +
 
         "mov rax, [rel gclen@@]\n" +
@@ -336,7 +342,7 @@ public class Generator
                     fnCode += $"mov rdi, 1\nmov rcx, 1\n";
                     fnCode += $"mov rsi, {allocInfo!.ByteSize}\n";
                     fnCode += $"mov rdx, {allocInfo.ByteSize}\n";
-                    fnCode += "sub rsp, 32\ncall calloc\nadd rsp, 32\n";
+                    fnCode += $"sub rsp, 32\ncall calloc{wrt}\nadd rsp, 32\n";
                     fnCode += $"mov rdi, rax\nmov rsi, rsp\nmov rcx, {allocInfo.ByteSize}\n";
                     fnCode += "rep movsb\n";
                     fnCode += $"add rsp, {allocInfo.ByteSize.Pad(16)}\n";
@@ -684,7 +690,7 @@ public class Generator
             result += "add rdi, 8\n"; // null termination
                 if(Windows) result += "mov rcx, rdi\n";
             result += "sub rsp, 32\n";
-            result += "call calloc\n";
+            result += $"call calloc{wrt}\n";
             result += "add rsp, 32\n";
             result += "mov [rsp], rax\n";
             result += "mov r12, rax\n";
@@ -1052,7 +1058,7 @@ public class Generator
             result += $"mov {(Windows ? "rcx" : "rdi")}, {arr.Elems.Count+1}\n";
             result += $"mov {(Windows ? "rdx" : "rsi")}, {info!.ByteSize}\n";
             result += "sub rsp, 32\n";
-            result += $"call calloc\n";
+            result += $"call calloc{wrt}\n";
             result += "add rsp, 32\n";
             result += $"mov [rsp], rax\n";
             // TODO: Not push if manual mode specified
@@ -1126,7 +1132,7 @@ public class Generator
             result += $"mov {(Windows ? "rcx" : "rdi")}, rax\n";
             result += $"mov {(Windows ? "rdx" : "rsi")}, {info!.ByteSize}\n";
             result += "sub rsp, 32\n";
-            result += $"call calloc\n";
+            result += $"call calloc{wrt}\n";
             result += "add rsp, 32\n";
             result += $"mov [rsp], rax\n";
             // TODO: Not push if manual mode specified
