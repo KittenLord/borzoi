@@ -89,7 +89,7 @@ public class Generator
         $"{entry}:\n" +
         "and rsp, -32\n" +
         "mov rbp, rsp\n" +
-        "sub rsp, 32\n" +
+        (Windows ? "sub rsp, 32\n" : "") +
 
         $"mov {(Windows ? "rcx" : "rdi")}, { Settings.GCStackSize * Settings.Bytes }\n" +
         $"call malloc{wrt}\n" +
@@ -112,7 +112,7 @@ public class Generator
 
         "error@@:\n" +
         "push rbp\n" +
-        "sub rsp, 32\n" +
+        (Windows ? "sub rsp, 32\n" : "") +
         $"call printf{wrt}\n" +
         $"{(Windows ? "mov rcx, -1\ncall ExitProcess\n" : "")}" +
         "mov rbx, 1\n" +
@@ -141,7 +141,7 @@ public class Generator
         "mul rbx\n" +
         "mov [rel gccap@@], rax\n" +
 
-        "sub rsp, 32\n" +
+        (Windows ? "sub rsp, 32\n" : "") +
         $"mov {(Windows ? "rcx" : "rdi")}, [rel gcptr@@]\n" +
         "mov rax, [rel gccap@@]\n" +
         $"mov rbx, {Settings.Bytes}\n" +
@@ -149,7 +149,7 @@ public class Generator
         $"mov {(Windows ? "rdx" : "rsi")}, rax\n" +
         $"call realloc{wrt}\n" +
         "mov [rel gcptr@@], rax\n" +
-        "add rsp, 32\n" +
+        (Windows ? "add rsp, 32\n" : "") +
 
         "gccheckret@@:\n" +
         "pop rbp\n" +
@@ -204,9 +204,9 @@ public class Generator
         $"{(Windows ? "mov rcx, rdi\n" : "")}" +
         "mov r12, rdi\n" +
 
-        "sub rsp, 32\n" +
+        (Windows ? "sub rsp, 32\n" : "") +
         $"call free{wrt}\n" +
-        "add rsp, 32\n" +
+        (Windows ? "add rsp, 32\n" : "") +
 
         "mov rax, [rel gclen@@]\n" +
         "sub rax, 1\n" +
@@ -341,8 +341,9 @@ public class Generator
 
                     fnCode += $"mov rdi, 1\nmov rcx, 1\n";
                     fnCode += $"mov rsi, {allocInfo!.ByteSize}\n";
-                    fnCode += $"mov rdx, {allocInfo.ByteSize}\n";
-                    fnCode += $"sub rsp, 32\ncall calloc{wrt}\nadd rsp, 32\n";
+                    fnCode += $"mov rdx, {allocInfo!.ByteSize}\n";
+                    if(Windows) fnCode += $"sub rsp, 32\ncall calloc{wrt}\nadd rsp, 32\n";
+                    else fnCode += $"call calloc{wrt}\n";
                     fnCode += $"mov rdi, rax\nmov rsi, rsp\nmov rcx, {allocInfo.ByteSize}\n";
                     fnCode += "rep movsb\n";
                     fnCode += $"add rsp, {allocInfo.ByteSize.Pad(16)}\n";
@@ -688,10 +689,10 @@ public class Generator
             result += $"push rdi\n";
             result += "push 0\n";
             result += "add rdi, 8\n"; // null termination
-                if(Windows) result += "mov rcx, rdi\n";
-            result += "sub rsp, 32\n";
+            if(Windows) result += "mov rcx, rdi\n";
+            if(Windows) result += "sub rsp, 32\n";
             result += $"call calloc{wrt}\n";
-            result += "add rsp, 32\n";
+            if(Windows) result += "add rsp, 32\n";
             result += "mov [rsp], rax\n";
             result += "mov r12, rax\n";
             result += "call gcpush@@\n";
@@ -941,6 +942,62 @@ public class Generator
                     else
                     {
                         // System V
+
+                        List<string> intRegs = [ "rdi", "rsi", "rdx", "rcx", "r8", "r9" ];
+                        List<string> fltRegs = Enumerable.Range(0, 8).Select(c => "xmm" + c).ToList();
+
+                        List<IExpr> stackArgs = [];
+
+                        int restoreStack = 0;
+
+                        var isVarargs = (cfn.Args.Count != 0) && (cfn.Args.Last().Type ?? VType.Int) == VType.VARARGS;
+
+                        List<IExpr> funcArgs = new(func.Args);
+                        int amountOfVarargs = funcArgs.Count - cfn!.Args.Count() + (isVarargs ? 1 : 0);
+
+                        
+                        int returnSize = retTypeInfo.ByteSize.Pad(16);
+                        result += $"sub rsp, {returnSize}\n";
+
+                        for(int i = 0; i < funcArgs.Count; i++)
+                        {
+                            var arg = funcArgs[i];
+                            var argInfo = arg!.Type!.GetInfo(AST.TypeInfos)!;
+
+                            int integerBlocks = argInfo.SVType.Count(t => t == SysVType.Integer);
+                            int sseBlocks = argInfo.SVType.Count(t => t == SysVType.SSE);
+
+                            if(integerBlocks > intRegs.Count || sseBlocks > fltRegs.Count) {
+                                stackArgs.Add(arg);
+                                continue;
+                            }
+
+                            int goBack = argInfo.ByteSize.Pad(16);
+                            result += GenerateExpr(fn, arg);
+
+                            int eights = 0;
+                            foreach(var block in argInfo.SVType) {
+                                if(block == SysVType.Integer) {
+                                    var reg = intRegs[0];
+                                    intRegs.RemoveAt(0);
+
+                                    result += $"mov {reg}, [rsp + {eights * 8}]\n";
+                                }
+                                else if(block == SysVType.SSE) {
+                                    var reg = fltRegs[0];
+                                    fltRegs.RemoveAt(0);
+
+                                    result += $"movq {reg}, [rsp + {eights * 8}]\n";
+                                }
+                                eights++;
+                            }
+
+                            result += $"add rsp, {goBack}\n";
+                        }
+
+                        result += $"mov rax, {amountOfVarargs}\n";
+                        result += $"call {cfn.CName}\n";
+                        result += $"add rsp, {restoreStack}\n";
                     }
                 }
                 else throw new System.Exception("amgogus");
@@ -990,11 +1047,11 @@ public class Generator
                     result += $"jge {ib}\n";
                     result += $"{oob}:\n";
 
-                    result += "mov r8, rcx\n";
-                    result += "mov rdx, rax\n";
+                    result += $"mov {(Windows ? "r8" : "rdx")}, rcx\n";
+                    result += $"mov {(Windows ? "rdx" : "rsi")}, rax\n";
 
                     // Pass the string by its adress kids
-                    result += "mov rcx, error@@OutOfBounds\n";
+                    result += $"mov {(Windows ? "rcx" : "rdi")}, error@@OutOfBounds\n";
 
                     result += $"call error@@\n";
                     result += $"{ib}:\n";
@@ -1057,9 +1114,9 @@ public class Generator
             result += $"mov QWORD [rsp+8], {arr.Elems.Count}\n";
             result += $"mov {(Windows ? "rcx" : "rdi")}, {arr.Elems.Count+1}\n";
             result += $"mov {(Windows ? "rdx" : "rsi")}, {info!.ByteSize}\n";
-            result += "sub rsp, 32\n";
+            if(Windows) result += "sub rsp, 32\n";
             result += $"call calloc{wrt}\n";
-            result += "add rsp, 32\n";
+            if(Windows) result += "add rsp, 32\n";
             result += $"mov [rsp], rax\n";
             // TODO: Not push if manual mode specified
             result += $"mov r12, rax\n";
@@ -1131,9 +1188,9 @@ public class Generator
             result += "add rax, 8\n"; // guaranteed null terminator
             result += $"mov {(Windows ? "rcx" : "rdi")}, rax\n";
             result += $"mov {(Windows ? "rdx" : "rsi")}, {info!.ByteSize}\n";
-            result += "sub rsp, 32\n";
+            if(Windows) result += "sub rsp, 32\n";
             result += $"call calloc{wrt}\n";
-            result += "add rsp, 32\n";
+            if(Windows) result += "add rsp, 32\n";
             result += $"mov [rsp], rax\n";
             // TODO: Not push if manual mode specified
             result += $"mov r12, rax\n";

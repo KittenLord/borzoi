@@ -361,6 +361,7 @@ rawdog:
         AddGccArgument(outputObjPath);
         AddGccArgument(libSearchPathsArg);
         AddGccArgument(linksArg);
+        if(!IsWindows) AddGccArgument("-no-pie");
         AddGccArgument($"-o {outputPath}");
 
         AddGccArgument("-fPIE");
