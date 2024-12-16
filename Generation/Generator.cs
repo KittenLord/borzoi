@@ -942,29 +942,29 @@ public class Generator
                     else
                     {
                         // System V
+                        
+                        result += $"; Call {cfn.Name}\n";
 
                         List<string> intRegs = [ "rdi", "rsi", "rdx", "rcx", "r8", "r9" ];
                         List<string> fltRegs = Enumerable.Range(0, 8).Select(c => "xmm" + c).ToList();
 
                         List<IExpr> stackArgs = [];
-
-                        int restoreStack = 0;
+                        List<(IExpr arg, List<string> regs, int offset)> regArgs = [];
 
                         var isVarargs = (cfn.Args.Count != 0) && (cfn.Args.Last().Type ?? VType.Int) == VType.VARARGS;
 
                         List<IExpr> funcArgs = new(func.Args);
                         int amountOfVarargs = funcArgs.Count - cfn!.Args.Count() + (isVarargs ? 1 : 0);
-
                         
+                        // NOTE: this is already done above
                         int returnSize = retTypeInfo.ByteSize.Pad(16);
-                        result += $"sub rsp, {returnSize}\n";
+                        // result += $"sub rsp, {returnSize}\n";
 
                         var returnOnStack = retTypeInfo.SVType.Any(r => r == SysVType.Memory);
                         if(returnOnStack) {
-                            result += $"lea rdi, [rsp]\n";
                             intRegs.RemoveAt(0);
                         }
-                        
+
                         for(int i = 0; i < funcArgs.Count; i++)
                         {
                             var arg = funcArgs[i];
@@ -978,34 +978,92 @@ public class Generator
                                 continue;
                             }
 
-                            int goBack = argInfo.ByteSize.Pad(16);
-                            result += GenerateExpr(fn, arg);
+                            List<string> regs = [];
 
-                            int eights = 0;
+                            // int goBack = argInfo.ByteSize.Pad(16);
+                            // result += GenerateExpr(fn, arg);
+
                             foreach(var block in argInfo.SVType) {
                                 if(block == SysVType.Integer) {
-                                    var reg = intRegs[0];
+                                    regs.Add(intRegs[0]);
                                     intRegs.RemoveAt(0);
-
-                                    result += $"mov {reg}, [rsp + {eights * 8}]\n";
                                 }
                                 else if(block == SysVType.SSE) {
-                                    var reg = fltRegs[0];
+                                    regs.Add(fltRegs[0]);
                                     fltRegs.RemoveAt(0);
-
-                                    result += $"movq {reg}, [rsp + {eights * 8}]\n";
                                 }
-                                eights++;
                             }
 
-                            result += $"add rsp, {goBack}\n";
+                            regArgs.Add((arg, regs, 0));
+                        }
+
+                        int argStack = 0;
+                        foreach(var arg in stackArgs) {
+                            var size = arg.Type!.GetInfo(AST.TypeInfos)!.ByteSize;
+                            size = size.Pad(8);
+                            argStack += size;
+                        }
+
+                        int restoreStack = argStack.Pad(16);
+                        if(restoreStack > argStack) result += $"sub rsp, 8\n";
+                        result += $"sub rsp, {argStack}\n";
+
+                        stackArgs.Reverse();
+                        regArgs.Reverse();
+
+                        foreach(var arg in stackArgs) {
+                            var size = arg.Type!.GetInfo(AST.TypeInfos)!.ByteSize;
+                            result += GenerateExpr(fn, arg);
+
+                            argStack -= size.Pad(8);
+                            result += $"lea rdi, [rsp + {size.Pad(16) + argStack}]\n";
+                            result += "lea rsi, [rsp]\n";
+                            result += $"mov rcx, {size}\n";
+                            result += "rep movsb\n";
+
+
+                            result += $"add rsp, {size.Pad(16)}\n";
+                        }
+
+                        int currentStackDepth = 0;
+                        for(int i = 0; i < regArgs.Count; i++) {
+                            var (arg, regs, _) = regArgs[i];
+                            var size = arg.Type!.GetInfo(AST.TypeInfos)!.ByteSize;
+                            result += $"; Generate arg start {regs.ListStr()}\n";
+                            result += GenerateExpr(fn, arg);
+                            result += $"; Generate arg end\n";
+
+                            for(int j = 0; j < i; j++) {
+                                var (a, r, o) = regArgs[j];
+                                regArgs[j] = (a, r, o + size.Pad(16));
+                            }
+
+                            currentStackDepth += size.Pad(16);
+                        }
+
+                        for(int i = 0; i < regArgs.Count; i++) {
+                            var (arg, regs, offset) = regArgs[i];
+
+                            var size = arg.Type!.GetInfo(AST.TypeInfos)!.ByteSize;
+                            for(int j = 0; j < regs.Count; j++) {
+                                var reg = regs[j];
+                                string q = reg.StartsWith("x") ? "q" : "";
+                                result += $"mov{q} {reg}, [rsp + {offset + j*8}]\n";
+                            }
+
+                        }
+
+                        result += $"add rsp, {currentStackDepth}\n";
+
+                        if(returnOnStack) {
+                            result += $"lea rdi, [rsp + {restoreStack}]\n";
                         }
 
                         result += $"mov rax, {amountOfVarargs}\n";
                         result += $"call {cfn.CName}\n";
                         result += $"add rsp, {restoreStack}\n";
 
-                        if(returnOnStack) {}
+                        if(returnOnStack || cfn.RetType.Name == "void") {}
                         else {
                             List<string> retIntRegs = [ "rax", "rdi" ];
                             List<string> retSSERegs = [ "xmm0", "xmm1" ];

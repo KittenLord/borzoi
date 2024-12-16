@@ -91,7 +91,6 @@ public class Analyzer
             // return;
         }
 
-        System.Console.WriteLine(info.ToString());
 
         string[] integerNames = [ "int", "i32", "byte", "bool" ];
         string[] sseNames = [ "float", "double" ];
