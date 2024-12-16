@@ -8,6 +8,8 @@ namespace Borzoi.Generation;
 
 public class Generator
 {
+    private static string wrt = " WRT ..plt";
+
 
     private AST AST;
     private bool Windows;
@@ -41,6 +43,7 @@ public class Generator
     {
         AST = ast;
         Windows = windows;
+        if(Windows) wrt = "";
         Optimize = optimize;
         LastString = 0;
         StringData = "";
@@ -53,6 +56,8 @@ public class Generator
             [ "malloc", "realloc", "calloc", "free", "printf" ];
         if(Windows) externFunctions.AddRange(
             [ "ExitProcess", "signal" ]);
+        else externFunctions.AddRange(
+            [ "sigaction" ]);
 
         foreach(var cfn in AST.CFndefs)
         {
@@ -61,7 +66,7 @@ public class Generator
         }
 
         // I fucking hate windows
-        string entry = Windows ? "main" : "_start";
+        string entry = Windows ? "main" : "main";
 
         string result = 
         "BITS 64\n" +
@@ -84,15 +89,16 @@ public class Generator
         $"{entry}:\n" +
         "and rsp, -32\n" +
         "mov rbp, rsp\n" +
-        "sub rsp, 32\n" +
+        (Windows ? "sub rsp, 32\n" : "") +
 
         $"mov {(Windows ? "rcx" : "rdi")}, { Settings.GCStackSize * Settings.Bytes }\n" +
-        "call malloc\n" +
+        $"call malloc{wrt}\n" +
         "mov [rel gcptr@@], rax\n" +
 
-        "mov rcx, 11\n" +
-        "mov rdx, handler@@sigsegv\n" +
-        "call signal\n" +
+        $"mov {(Windows ? "rcx" : "rdi")}, 11\n" +
+        $"mov {(Windows ? "rdx" : "rsi")}, handler@@sigsegv\n" +
+        (Windows ? "" : "mov rdx, 0\n") +
+        $"call {(Windows ? "signal" : "sigaction")}{wrt}\n" +
 
         "sub rsp, 32\n" +
         "mov QWORD [rsp], 0\nmov QWORD [rsp+8], 0\n mov QWORD [rsp+16], 0\nmov QWORD [rsp+24], 0\n" +
@@ -106,8 +112,8 @@ public class Generator
 
         "error@@:\n" +
         "push rbp\n" +
-        "sub rsp, 32\n" +
-        "call printf\n" +
+        (Windows ? "sub rsp, 32\n" : "") +
+        $"call printf{wrt}\n" +
         $"{(Windows ? "mov rcx, -1\ncall ExitProcess\n" : "")}" +
         "mov rbx, 1\n" +
         "mov rax, 0\n" +
@@ -115,7 +121,7 @@ public class Generator
 
         "handler@@sigsegv:\n" +
         "push rbp\n" +
-        "mov rcx, error@@SEGFAULT\n" +
+        $"mov {(Windows ? "rcx" : "rdi")}, error@@SEGFAULT\n" +
         "call error@@\n" +
 
 
@@ -135,15 +141,15 @@ public class Generator
         "mul rbx\n" +
         "mov [rel gccap@@], rax\n" +
 
-        "sub rsp, 32\n" +
+        (Windows ? "sub rsp, 32\n" : "") +
         $"mov {(Windows ? "rcx" : "rdi")}, [rel gcptr@@]\n" +
         "mov rax, [rel gccap@@]\n" +
         $"mov rbx, {Settings.Bytes}\n" +
         "mul rax\n" +
         $"mov {(Windows ? "rdx" : "rsi")}, rax\n" +
-        "call realloc\n" +
+        $"call realloc{wrt}\n" +
         "mov [rel gcptr@@], rax\n" +
-        "add rsp, 32\n" +
+        (Windows ? "add rsp, 32\n" : "") +
 
         "gccheckret@@:\n" +
         "pop rbp\n" +
@@ -198,9 +204,9 @@ public class Generator
         $"{(Windows ? "mov rcx, rdi\n" : "")}" +
         "mov r12, rdi\n" +
 
-        "sub rsp, 32\n" +
-        "call free\n" +
-        "add rsp, 32\n" +
+        (Windows ? "sub rsp, 32\n" : "") +
+        $"call free{wrt}\n" +
+        (Windows ? "add rsp, 32\n" : "") +
 
         "mov rax, [rel gclen@@]\n" +
         "sub rax, 1\n" +
@@ -335,8 +341,9 @@ public class Generator
 
                     fnCode += $"mov rdi, 1\nmov rcx, 1\n";
                     fnCode += $"mov rsi, {allocInfo!.ByteSize}\n";
-                    fnCode += $"mov rdx, {allocInfo.ByteSize}\n";
-                    fnCode += "sub rsp, 32\ncall calloc\nadd rsp, 32\n";
+                    fnCode += $"mov rdx, {allocInfo!.ByteSize}\n";
+                    if(Windows) fnCode += $"sub rsp, 32\ncall calloc{wrt}\nadd rsp, 32\n";
+                    else fnCode += $"call calloc{wrt}\n";
                     fnCode += $"mov rdi, rax\nmov rsi, rsp\nmov rcx, {allocInfo.ByteSize}\n";
                     fnCode += "rep movsb\n";
                     fnCode += $"add rsp, {allocInfo.ByteSize.Pad(16)}\n";
@@ -682,10 +689,10 @@ public class Generator
             result += $"push rdi\n";
             result += "push 0\n";
             result += "add rdi, 8\n"; // null termination
-                if(Windows) result += "mov rcx, rdi\n";
-            result += "sub rsp, 32\n";
-            result += "call calloc\n";
-            result += "add rsp, 32\n";
+            if(Windows) result += "mov rcx, rdi\n";
+            if(Windows) result += "sub rsp, 32\n";
+            result += $"call calloc{wrt}\n";
+            if(Windows) result += "add rsp, 32\n";
             result += "mov [rsp], rax\n";
             result += "mov r12, rax\n";
             result += "call gcpush@@\n";
@@ -935,6 +942,147 @@ public class Generator
                     else
                     {
                         // System V
+                        
+                        result += $"; Call {cfn.Name}\n";
+
+                        List<string> intRegs = [ "rdi", "rsi", "rdx", "rcx", "r8", "r9" ];
+                        List<string> fltRegs = Enumerable.Range(0, 8).Select(c => "xmm" + c).ToList();
+
+                        List<IExpr> stackArgs = [];
+                        List<(IExpr arg, List<string> regs, int offset)> regArgs = [];
+
+                        var isVarargs = (cfn.Args.Count != 0) && (cfn.Args.Last().Type ?? VType.Int) == VType.VARARGS;
+
+                        List<IExpr> funcArgs = new(func.Args);
+                        int amountOfVarargs = funcArgs.Count - cfn!.Args.Count() + (isVarargs ? 1 : 0);
+                        
+                        // NOTE: this is already done above
+                        int returnSize = retTypeInfo.ByteSize.Pad(16);
+                        // result += $"sub rsp, {returnSize}\n";
+
+                        var returnOnStack = retTypeInfo.SVType.Any(r => r == SysVType.Memory);
+                        if(returnOnStack) {
+                            intRegs.RemoveAt(0);
+                        }
+
+                        for(int i = 0; i < funcArgs.Count; i++)
+                        {
+                            var arg = funcArgs[i];
+                            var argInfo = arg!.Type!.GetInfo(AST.TypeInfos)!;
+
+                            int integerBlocks = argInfo.SVType.Count(t => t == SysVType.Integer);
+                            int sseBlocks = argInfo.SVType.Count(t => t == SysVType.SSE);
+
+                            if(argInfo.SVType.Any(s => s == SysVType.Memory) || integerBlocks > intRegs.Count || sseBlocks > fltRegs.Count) {
+                                stackArgs.Add(arg);
+                                continue;
+                            }
+
+                            List<string> regs = [];
+
+                            // int goBack = argInfo.ByteSize.Pad(16);
+                            // result += GenerateExpr(fn, arg);
+
+                            foreach(var block in argInfo.SVType) {
+                                if(block == SysVType.Integer) {
+                                    regs.Add(intRegs[0]);
+                                    intRegs.RemoveAt(0);
+                                }
+                                else if(block == SysVType.SSE) {
+                                    regs.Add(fltRegs[0]);
+                                    fltRegs.RemoveAt(0);
+                                }
+                            }
+
+                            regArgs.Add((arg, regs, 0));
+                        }
+
+                        int argStack = 0;
+                        foreach(var arg in stackArgs) {
+                            var size = arg.Type!.GetInfo(AST.TypeInfos)!.ByteSize;
+                            size = size.Pad(8);
+                            argStack += size;
+                        }
+
+                        int restoreStack = argStack.Pad(16);
+                        if(restoreStack > argStack) result += $"sub rsp, 8\n";
+                        result += $"sub rsp, {argStack}\n";
+
+                        stackArgs.Reverse();
+                        regArgs.Reverse();
+
+                        foreach(var arg in stackArgs) {
+                            var size = arg.Type!.GetInfo(AST.TypeInfos)!.ByteSize;
+                            result += GenerateExpr(fn, arg);
+
+                            argStack -= size.Pad(8);
+                            result += $"lea rdi, [rsp + {size.Pad(16) + argStack}]\n";
+                            result += "lea rsi, [rsp]\n";
+                            result += $"mov rcx, {size}\n";
+                            result += "rep movsb\n";
+
+
+                            result += $"add rsp, {size.Pad(16)}\n";
+                        }
+
+                        int currentStackDepth = 0;
+                        for(int i = 0; i < regArgs.Count; i++) {
+                            var (arg, regs, _) = regArgs[i];
+                            var size = arg.Type!.GetInfo(AST.TypeInfos)!.ByteSize;
+                            result += $"; Generate arg start {regs.ListStr()}\n";
+                            result += GenerateExpr(fn, arg);
+                            result += $"; Generate arg end\n";
+
+                            for(int j = 0; j < i; j++) {
+                                var (a, r, o) = regArgs[j];
+                                regArgs[j] = (a, r, o + size.Pad(16));
+                            }
+
+                            currentStackDepth += size.Pad(16);
+                        }
+
+                        for(int i = 0; i < regArgs.Count; i++) {
+                            var (arg, regs, offset) = regArgs[i];
+
+                            var size = arg.Type!.GetInfo(AST.TypeInfos)!.ByteSize;
+                            for(int j = 0; j < regs.Count; j++) {
+                                var reg = regs[j];
+                                string q = reg.StartsWith("x") ? "q" : "";
+                                result += $"mov{q} {reg}, [rsp + {offset + j*8}]\n";
+                            }
+
+                        }
+
+                        result += $"add rsp, {currentStackDepth}\n";
+
+                        if(returnOnStack) {
+                            result += $"lea rdi, [rsp + {restoreStack}]\n";
+                        }
+
+                        result += $"mov rax, {amountOfVarargs}\n";
+                        result += $"call {cfn.CName}\n";
+                        result += $"add rsp, {restoreStack}\n";
+
+                        if(returnOnStack || cfn.RetType.Name == "void") {}
+                        else {
+                            List<string> retIntRegs = [ "rax", "rdi" ];
+                            List<string> retSSERegs = [ "xmm0", "xmm1" ];
+
+                            int eights = 0;
+
+                            foreach(var block in retTypeInfo.SVType) {
+                                if(block == SysVType.Integer) {
+                                    result += $"mov [rsp + {eights}], {retIntRegs[0]}\n";
+                                    retIntRegs.RemoveAt(0);
+                                }
+                                else if(block == SysVType.SSE) {
+                                    result += $"movq [rsp + {eights}], {retSSERegs[0]}\n";
+                                    retSSERegs.RemoveAt(0);
+                                }
+
+                                eights++;
+                            }
+                        }
                     }
                 }
                 else throw new System.Exception("amgogus");
@@ -984,11 +1132,11 @@ public class Generator
                     result += $"jge {ib}\n";
                     result += $"{oob}:\n";
 
-                    result += "mov r8, rcx\n";
-                    result += "mov rdx, rax\n";
+                    result += $"mov {(Windows ? "r8" : "rdx")}, rcx\n";
+                    result += $"mov {(Windows ? "rdx" : "rsi")}, rax\n";
 
                     // Pass the string by its adress kids
-                    result += "mov rcx, error@@OutOfBounds\n";
+                    result += $"mov {(Windows ? "rcx" : "rdi")}, error@@OutOfBounds\n";
 
                     result += $"call error@@\n";
                     result += $"{ib}:\n";
@@ -1051,9 +1199,9 @@ public class Generator
             result += $"mov QWORD [rsp+8], {arr.Elems.Count}\n";
             result += $"mov {(Windows ? "rcx" : "rdi")}, {arr.Elems.Count+1}\n";
             result += $"mov {(Windows ? "rdx" : "rsi")}, {info!.ByteSize}\n";
-            result += "sub rsp, 32\n";
-            result += $"call calloc\n";
-            result += "add rsp, 32\n";
+            if(Windows) result += "sub rsp, 32\n";
+            result += $"call calloc{wrt}\n";
+            if(Windows) result += "add rsp, 32\n";
             result += $"mov [rsp], rax\n";
             // TODO: Not push if manual mode specified
             result += $"mov r12, rax\n";
@@ -1125,9 +1273,9 @@ public class Generator
             result += "add rax, 8\n"; // guaranteed null terminator
             result += $"mov {(Windows ? "rcx" : "rdi")}, rax\n";
             result += $"mov {(Windows ? "rdx" : "rsi")}, {info!.ByteSize}\n";
-            result += "sub rsp, 32\n";
-            result += $"call calloc\n";
-            result += "add rsp, 32\n";
+            if(Windows) result += "sub rsp, 32\n";
+            result += $"call calloc{wrt}\n";
+            if(Windows) result += "add rsp, 32\n";
             result += $"mov [rsp], rax\n";
             // TODO: Not push if manual mode specified
             result += $"mov r12, rax\n";

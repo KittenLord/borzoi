@@ -4,6 +4,17 @@ using System.Linq;
 
 namespace Borzoi;
 
+public enum SysVType
+{
+    Integer,
+    SSE,
+    SSEUp,
+    X87,
+    ComplexX87,
+    NoClass,
+    Memory,
+}
+
 public interface VTypeMod 
 {
     public bool Same(VTypeMod other);
@@ -52,17 +63,18 @@ public class VPointer : VTypeMod
 // TODO: Readonly members (can't set, or create pointers to)
 public class TypeInfo
 {
+    public List<SysVType> SVType { get; set; } = new();
     public int ByteSize { get; set; }
     public int Alignment { get; set; }
 
     public List<(string Name, VType Type, int Offset)> Members = new();
 
-    public TypeInfo(int bs, int al = -1) { ByteSize = bs; Alignment = al < 0 ? ByteSize : al; }
+    public TypeInfo(List<SysVType> svt, int bs, int al = -1) { SVType = svt; ByteSize = bs; Alignment = al < 0 ? ByteSize : al; }
 
     public override string ToString() { return $"{ByteSize} | {Alignment}\n{string.Join("\n", Members.Select(member => $"{member.Name} :: {member.Type} // {member.Offset}")).Indent()}"; }
 
-    public static readonly TypeInfo Pointer = new(Settings.Bytes);
-    public static readonly TypeInfo Array = new(Settings.Bytes * 2, 8) { Members = { 
+    public static readonly TypeInfo Pointer = new([SysVType.Integer], Settings.Bytes);
+    public static readonly TypeInfo Array = new([SysVType.Integer], Settings.Bytes * 2, 8) { Members = { 
         ( "ptr", VType.Void.Modify(VTypeMod.Pointer()), 0 ), 
         ( "len", VType.Int, 8 ), 
     }};

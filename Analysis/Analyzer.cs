@@ -32,6 +32,56 @@ public class Analyzer
     public Dictionary<string, TypeInfo> TypeInfos;
     public List<VType> Types;
 
+    private List<(int Offset, TypeInfo info)> FlattenOutMembers(TypeInfo info, int extraOffset) {
+        if(info.Members.Count == 0) return [(extraOffset, info)];
+        List<(int Offset, TypeInfo info)> result = [];
+        int offset = 0;
+        foreach(var m in info.Members) {
+            var minfo = m.Type.GetInfo(TypeInfos);
+            if(minfo!.Members.Count == 0) result.Add((offset + extraOffset, minfo));
+            else { result.AddRange(FlattenOutMembers(minfo, offset)); }
+            offset += minfo.ByteSize;
+        }
+        return result;
+    }
+
+    private List<SysVType> EvaluateEach8ByteChunk(TypeInfo info) {
+        if(info.SVType.Count > 0) return info.SVType;
+        List<SysVType> result = [];
+        var members = FlattenOutMembers(info, 0);
+        int bytesToConsume = 8;
+
+        while(members.Count() != 0) {
+            List<(int Offset, TypeInfo Info)> blockMembers = [];
+            while(members.Count() != 0 && members[0].Offset < bytesToConsume) { blockMembers.Add(members[0]); members.RemoveAt(0); }
+            bytesToConsume += 8;
+
+            SysVType svt = SysVType.NoClass;
+            foreach(var m in blockMembers) {
+                if(svt == m.Info.SVType.First()) continue;
+                else if(svt == SysVType.NoClass) svt = m.Info.SVType.First();
+                else if(svt == SysVType.Memory || m.Info.SVType.First() == SysVType.Memory) svt = SysVType.Memory; // if i'm not dumb this will never happen
+                else if(svt == SysVType.Integer || m.Info.SVType.First() == SysVType.Integer) svt = SysVType.Integer;
+                else if(svt == SysVType.X87 || svt == SysVType.ComplexX87 || m.Info.SVType.First() == SysVType.X87 || m.Info.SVType.First() == SysVType.ComplexX87) svt = SysVType.Memory;
+                else svt = SysVType.SSE;
+            }
+
+            result.Add(svt);
+        }
+
+        // NOTE: Post merger cleanup
+        // Structs are ALWAYS aligned, so no need to pass the whole argument as MEMORY
+        // I haven't implemented X87 stuff, so no need to merge those
+        // I haven't implemented m128 or m256, so no need to check for SSEUP
+
+        return result;
+    }
+
+    // very inefficient
+    private int GetAmountOf8Bytes(TypeInfo info) {
+        return EvaluateEach8ByteChunk(info).Count();
+    }
+
     public void RegisterType(VType vtype, TypeInfo info)
     {
         if(TypeExists(vtype.Name, out _)) 
@@ -40,6 +90,18 @@ public class Analyzer
             throw new System.Exception("AAAAAA");
             // return;
         }
+
+
+        string[] integerNames = [ "int", "i32", "byte", "bool" ];
+        string[] sseNames = [ "float", "double" ];
+        if(integerNames.Contains(vtype.Name)) info.SVType = [SysVType.Integer];
+        else if(sseNames.Contains(vtype.Name)) info.SVType = [SysVType.SSE];
+
+        else if(info.ByteSize > 2 * 8) info.SVType = Enumerable.Range(0, GetAmountOf8Bytes(info)).Select(s => SysVType.Memory).ToList();
+        else info.SVType = EvaluateEach8ByteChunk(info);
+
+        // NOTE: iirc borzoi always ensures that all fields are 
+        // aligned, but it's possible that I misremember
 
         Types.Add(vtype);
         TypeInfos[vtype.Name] = info;
@@ -784,16 +846,16 @@ public class Analyzer
 
     public void Analyze()
     {
-        RegisterType(VType.Int, new(8));
-        RegisterType(VType.I32, new(4));
-        RegisterType(VType.Byte, new(1));
+        RegisterType(VType.Int, new([SysVType.Integer], 8));
+        RegisterType(VType.I32, new([SysVType.Integer], 4));
+        RegisterType(VType.Byte, new([SysVType.Integer], 1));
 
-        RegisterType(VType.Double, new(8));
-        RegisterType(VType.Float, new(4));
+        RegisterType(VType.Double, new([SysVType.SSE], 8));
+        RegisterType(VType.Float, new([SysVType.SSE], 4));
 
-        RegisterType(VType.Bool, new(1));
+        RegisterType(VType.Bool, new([SysVType.Integer], 1));
 
-        RegisterType(VType.Void, new(0));
+        RegisterType(VType.Void, new([SysVType.Integer], 0));
 
         if(!AST.Fndefs.Any(fn => fn.Name == "main"))
         {
@@ -816,8 +878,8 @@ public class Analyzer
 
                 var vtype = new VType(typedef.Name);
 
-                var typeinfo = new TypeInfo(0, alignment);
-                
+                var typeinfo = new TypeInfo([], 0, alignment);
+
                 int offset = 0;
                 foreach(var member in typedef.Members)
                 {

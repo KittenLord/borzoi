@@ -29,4 +29,8 @@ public static class Extensions
         while(num % pad != 0) num++;
         return num;
     }
+
+    public static string ListStr(this List<string> list) {
+        return string.Join(", ", list);
+    }
 }
