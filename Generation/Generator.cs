@@ -959,6 +959,12 @@ public class Generator
                         int returnSize = retTypeInfo.ByteSize.Pad(16);
                         result += $"sub rsp, {returnSize}\n";
 
+                        var returnOnStack = retTypeInfo.SVType.Any(r => r == SysVType.Memory);
+                        if(returnOnStack) {
+                            result += $"lea rdi, [rsp]\n";
+                            intRegs.RemoveAt(0);
+                        }
+                        
                         for(int i = 0; i < funcArgs.Count; i++)
                         {
                             var arg = funcArgs[i];
@@ -967,7 +973,7 @@ public class Generator
                             int integerBlocks = argInfo.SVType.Count(t => t == SysVType.Integer);
                             int sseBlocks = argInfo.SVType.Count(t => t == SysVType.SSE);
 
-                            if(integerBlocks > intRegs.Count || sseBlocks > fltRegs.Count) {
+                            if(argInfo.SVType.Any(s => s == SysVType.Memory) || integerBlocks > intRegs.Count || sseBlocks > fltRegs.Count) {
                                 stackArgs.Add(arg);
                                 continue;
                             }
@@ -998,6 +1004,27 @@ public class Generator
                         result += $"mov rax, {amountOfVarargs}\n";
                         result += $"call {cfn.CName}\n";
                         result += $"add rsp, {restoreStack}\n";
+
+                        if(returnOnStack) {}
+                        else {
+                            List<string> retIntRegs = [ "rax", "rdi" ];
+                            List<string> retSSERegs = [ "xmm0", "xmm1" ];
+
+                            int eights = 0;
+
+                            foreach(var block in retTypeInfo.SVType) {
+                                if(block == SysVType.Integer) {
+                                    result += $"mov [rsp + {eights}], {retIntRegs[0]}\n";
+                                    retIntRegs.RemoveAt(0);
+                                }
+                                else if(block == SysVType.SSE) {
+                                    result += $"movq [rsp + {eights}], {retSSERegs[0]}\n";
+                                    retSSERegs.RemoveAt(0);
+                                }
+
+                                eights++;
+                            }
+                        }
                     }
                 }
                 else throw new System.Exception("amgogus");

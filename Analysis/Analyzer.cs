@@ -77,6 +77,11 @@ public class Analyzer
         return result;
     }
 
+    // very inefficient
+    private int GetAmountOf8Bytes(TypeInfo info) {
+        return EvaluateEach8ByteChunk(info).Count();
+    }
+
     public void RegisterType(VType vtype, TypeInfo info)
     {
         if(TypeExists(vtype.Name, out _)) 
@@ -93,7 +98,7 @@ public class Analyzer
         if(integerNames.Contains(vtype.Name)) info.SVType = [SysVType.Integer];
         else if(sseNames.Contains(vtype.Name)) info.SVType = [SysVType.SSE];
 
-        else if(info.ByteSize > 4 * 8) info.SVType = [SysVType.Memory];
+        else if(info.ByteSize > 2 * 8) info.SVType = Enumerable.Range(0, GetAmountOf8Bytes(info)).Select(s => SysVType.Memory).ToList();
         else info.SVType = EvaluateEach8ByteChunk(info);
 
         // NOTE: iirc borzoi always ensures that all fields are 
